@@ -37,6 +37,10 @@
 static circBuf_t g_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
 static uint32_t g_ulSampCnt;	// Counter for the interrupts
 static uint16_t landed_reference;   // voltage when helicopter has landed
+static float yaw_offset = 0;
+static bool yaw_A_state = false;
+static bool yaw_B_state = false;
+static bool yaw_flag = false;
 
 
 //*****************************************************************************
@@ -52,6 +56,13 @@ SysTickIntHandler(void)
     //
     ADCProcessorTrigger(ADC0_BASE, 3);
     g_ulSampCnt++;
+}
+
+void
+yawIntHandler(void)
+{
+    yaw_flag = true;
+    GPIOIntClear(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 }
 
 //*****************************************************************************
@@ -143,6 +154,26 @@ initDisplay (void)
     OLEDInitialise ();
 }
 
+void
+initYaw(void)
+{
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOB))
+    {
+    }
+
+    //GPIOPadConfigSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_STRENGTH_4MA, GPIO_PIN_TYPE_STD_WPU);
+    //GPIODirModeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_DIR_MODE_IN);
+
+    GPIOIntRegister(GPIO_PORTB_BASE, yawIntHandler);
+
+    GPIOPinTypeGPIOInput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1 );
+
+    GPIODirModeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_DIR_MODE_IN);
+    GPIOIntTypeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_BOTH_EDGES);
+    GPIOIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+}
+
 //*****************************************************************************
 //
 // Function to display the mean ADC value (10-bit value, note) and sample count.
@@ -160,10 +191,8 @@ displayMeanVal(uint16_t meanVal, uint32_t count)
     usnprintf (string, sizeof(string), "Mean ADC = %4d", meanVal);
     // Update line on display.
     OLEDStringDraw (string, 0, 1);
-    /*
-    usnprintf (string, sizeof(string), "Sample # %5d", count);
-    OLEDStringDraw (string, 0, 3);
-    */
+
+    OLEDStringDraw("                ", 0, 2);
 }
 
 void
@@ -175,22 +204,20 @@ displayPercentageHeight(uint16_t meanVal, uint32_t count)
 
     int16_t percentage;
     percentage = (landed_reference - meanVal) / 8; //
-    /*
-    if (percentage > 100) {
-        percentage = 100;
-    } else if (percentage < 0) {
-        percentage = 0;
-    }*/
 
     // Form a new string for the line.  The maximum width specified for the
     //  number field ensures it is displayed right justified.
     usnprintf (string, sizeof(string), "height = %3d%%", percentage);
     // Update line on display.
     OLEDStringDraw (string, 0, 1);
-    /*
-    usnprintf (string, sizeof(string), "Sample # %5d", count);
-    OLEDStringDraw (string, 0, 3);
-    */
+
+    // DELETE THIS
+    uint16_t yaw = yaw_offset;
+
+
+    usnprintf (string, sizeof(string), "yaw = %3d deg", yaw);
+    // Update line on display.
+    OLEDStringDraw (string, 0, 2);
 }
 
 void clearDisplay()
@@ -201,10 +228,57 @@ void clearDisplay()
     OLEDStringDraw("                ", 0, 3);
 }
 
+void update_yaw()
+{
+    bool new_A = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_0);
+    bool new_B = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_1);
+
+    if(!yaw_A_state && !yaw_B_state)
+    {
+        if (!new_A && new_B)    //  clockwise
+            yaw_offset += 360. / 448.;
+        else                    // anticlockwise
+            yaw_offset -= 360. / 448.;
+    }
+
+    if(!yaw_A_state && yaw_B_state)
+    {
+        if (new_A && new_B)    //  clockwise
+            yaw_offset += 360. / 448.;
+        else                    // anticlockwise
+            yaw_offset -= 360. / 448.;
+    }
+
+    if(yaw_A_state && yaw_B_state)
+    {
+        if (new_A && !new_B)    //  clockwise
+            yaw_offset += 360. / 448.;
+        else                    // anticlockwise
+            yaw_offset -= 360. / 448.;
+    }
+
+    if(yaw_A_state && !yaw_B_state)
+    {
+        if (!new_A && !new_B)    //  clockwise
+            yaw_offset += 360. / 448.;
+        else                    // anticlockwise
+            yaw_offset -= 360. / 448.;
+    }
+
+
+    if (yaw_offset > 360)
+        yaw_offset -= 360;
+    else if (yaw_offset < 0)
+        yaw_offset += 360;
+
+    yaw_A_state = new_A;
+    yaw_B_state = new_B;
+}
+
 
 int
 main(void)
-{
+ {
 	uint16_t i;
 	int32_t sum;
 	uint16_t mean;
@@ -217,6 +291,9 @@ main(void)
 	initDisplay ();
 	initCircBuf (&g_inBuffer, BUF_SIZE);
     initButtons ();
+    initYaw();
+
+
 	sum = 0;
 
 	SysCtlDelay (SysCtlClockGet() / 6);  // Update display at ~ 2 Hz
@@ -238,6 +315,10 @@ main(void)
 	        updateButtons ();       // Poll the buttons
 	    }
 
+	    if (yaw_flag){
+	        yaw_flag = false;
+	        update_yaw();
+	    }
 
 		//
 		// Background task: calculate the (approximate) mean of the values in the
@@ -253,6 +334,7 @@ main(void)
         butState = checkButton (LEFT);
         if (butState == PUSHED) {
             landed_reference = mean;
+            yaw_offset = 0;
         }
 
 
