@@ -13,6 +13,7 @@ C_SRCS += \
 ../circBufT.c \
 ../main.c \
 ../tm4c123gh6pm_startup_ccs.c \
+../uart.c \
 C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c 
 
 C_DEPS += \
@@ -20,6 +21,7 @@ C_DEPS += \
 ./circBufT.d \
 ./main.d \
 ./tm4c123gh6pm_startup_ccs.d \
+./uart.d \
 ./ustdlib.d 
 
 OBJS += \
@@ -27,6 +29,7 @@ OBJS += \
 ./circBufT.obj \
 ./main.obj \
 ./tm4c123gh6pm_startup_ccs.obj \
+./uart.obj \
 ./ustdlib.obj 
 
 OBJS__QUOTED += \
@@ -34,6 +37,7 @@ OBJS__QUOTED += \
 "circBufT.obj" \
 "main.obj" \
 "tm4c123gh6pm_startup_ccs.obj" \
+"uart.obj" \
 "ustdlib.obj" 
 
 C_DEPS__QUOTED += \
@@ -41,6 +45,7 @@ C_DEPS__QUOTED += \
 "circBufT.d" \
 "main.d" \
 "tm4c123gh6pm_startup_ccs.d" \
+"uart.d" \
 "ustdlib.d" 
 
 C_SRCS__QUOTED += \
@@ -48,6 +53,7 @@ C_SRCS__QUOTED += \
 "../circBufT.c" \
 "../main.c" \
 "../tm4c123gh6pm_startup_ccs.c" \
+"../uart.c" \
 "C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c" 
 
 

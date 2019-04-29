@@ -24,6 +24,44 @@
 #include "circBufT.h"
 #include "OrbitOLED/OrbitOLEDInterface.h"
 #include "buttons4.h"
+#include "uart.h"
+
+//*****************************************************************************
+// Definitions
+//*****************************************************************************
+
+// PWM configuration
+#define PWM_START_DUTY  0
+#define PWM_RATE_MIN_DUTY    0
+#define PWM_RATE_MAX_DUTY    100
+#define PWM_FIXED_RATE_HZ     200
+#define PWM_DIVIDER_CODE   SYSCTL_PWMDIV_4
+#define PWM_DIVIDER        4
+
+//  PWM Hardware Details M0PWM7 (gen 3)
+//  ---Main Rotor PWM: PC5, J4-05
+#define PWM_MAIN_BASE        PWM0_BASE
+#define PWM_MAIN_GEN         PWM_GEN_3
+#define PWM_MAIN_OUTNUM      PWM_OUT_7
+#define PWM_MAIN_OUTBIT      PWM_OUT_7_BIT
+#define PWM_MAIN_PERIPH_PWM  SYSCTL_PERIPH_PWM0
+#define PWM_MAIN_PERIPH_GPIO SYSCTL_PERIPH_GPIOC
+#define PWM_MAIN_GPIO_BASE   GPIO_PORTC_BASE
+#define PWM_MAIN_GPIO_CONFIG GPIO_PC5_M0PWM7
+#define PWM_MAIN_GPIO_PIN    GPIO_PIN_5
+
+#define PWM_SECONDARY_BASE        PWM1_BASE
+#define PWM_SECONDARY_GEN         PWM_GEN_2
+#define PWM_SECONDARY_OUTNUM      PWM_OUT_5
+#define PWM_SECONDARY_OUTBIT      PWM_OUT_5_BIT
+#define PWM_SECONDARY_PERIPH_PWM  SYSCTL_PERIPH_PWM1
+#define PWM_SECONDARY_PERIPH_GPIO SYSCTL_PERIPH_GPIOF
+#define PWM_SECONDARY_GPIO_BASE   GPIO_PORTF_BASE
+#define PWM_SECONDARY_GPIO_CONFIG GPIO_PF1_M1PWM5
+#define PWM_SECONDARY_GPIO_PIN    GPIO_PIN_1
+
+#define MAIN_ROTOR 1
+#define SECONDARY_ROTOR 2
 
 //*****************************************************************************
 // Constants
@@ -37,10 +75,25 @@
 static circBuf_t g_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
 static uint32_t g_ulSampCnt;	// Counter for the interrupts
 static uint16_t landed_reference;   // voltage when helicopter has landed
-static float yaw_offset = 0;
+static uint16_t altitude;
+static float yaw = 0;
 static bool yaw_A_state = false;
 static bool yaw_B_state = false;
-static bool yaw_flag = false;
+static volatile bool yaw_flag = false;
+static volatile bool swChanged = false;
+static int32_t main_duty = 0;
+static int32_t secondary_duty = 0;
+enum heli_states {STARTUP = 0, LANDED, LANDING, FLYING};
+static float integrated_yaw_error = 0;
+static float integrated_alt_error = 0;
+
+static int16_t desired_altitude = 0;
+static float desired_yaw = 0;
+
+static float K_P = 5;
+static float K_I = 4;
+
+
 
 
 //*****************************************************************************
@@ -63,6 +116,13 @@ yawIntHandler(void)
 {
     yaw_flag = true;
     GPIOIntClear(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+}
+
+void
+swIntHandler(void)
+{
+    swChanged = true;
+    GPIOIntClear(GPIO_PORTA_BASE, GPIO_PIN_7);
 }
 
 //*****************************************************************************
@@ -108,6 +168,44 @@ initClock (void)
     // Enable interrupt and device
     SysTickIntEnable();
     SysTickEnable();
+}
+
+void
+initialisePWM (void)
+{
+    // Initialise main rotor
+    SysCtlPeripheralEnable(PWM_MAIN_PERIPH_PWM);
+    SysCtlPeripheralEnable(PWM_MAIN_PERIPH_GPIO);
+
+    GPIOPinConfigure(PWM_MAIN_GPIO_CONFIG);
+    GPIOPinTypePWM(PWM_MAIN_GPIO_BASE, PWM_MAIN_GPIO_PIN);
+
+    PWMGenConfigure(PWM_MAIN_BASE, PWM_MAIN_GEN,
+                    PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
+    // Set the initial PWM parameters
+
+    PWMGenPeriodSet(PWM_MAIN_BASE, PWM_MAIN_GEN, SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ);
+
+    PWMGenEnable(PWM_MAIN_BASE, PWM_MAIN_GEN);
+
+    PWMOutputState(PWM_MAIN_BASE, PWM_MAIN_OUTBIT, true);
+
+
+    // Initialise secondary rotor
+    SysCtlPeripheralEnable(PWM_SECONDARY_PERIPH_PWM);
+    SysCtlPeripheralEnable(PWM_SECONDARY_PERIPH_GPIO);
+
+    GPIOPinConfigure(PWM_SECONDARY_GPIO_CONFIG);
+    GPIOPinTypePWM(PWM_SECONDARY_GPIO_BASE, PWM_SECONDARY_GPIO_PIN);
+
+    PWMGenConfigure(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN,
+                    PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
+    // Set the initial PWM parameters
+    PWMGenPeriodSet(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN, SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ);
+
+    PWMGenEnable(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN);
+
+    PWMOutputState(PWM_SECONDARY_BASE, PWM_SECONDARY_OUTBIT, true);
 }
 
 void 
@@ -162,9 +260,6 @@ initYaw(void)
     {
     }
 
-    //GPIOPadConfigSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_STRENGTH_4MA, GPIO_PIN_TYPE_STD_WPU);
-    //GPIODirModeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_DIR_MODE_IN);
-
     GPIOIntRegister(GPIO_PORTB_BASE, yawIntHandler);
 
     GPIOPinTypeGPIOInput(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1 );
@@ -174,58 +269,79 @@ initYaw(void)
     GPIOIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 }
 
-//*****************************************************************************
-//
-// Function to display the mean ADC value (10-bit value, note) and sample count.
-//
-//*****************************************************************************
 void
-displayMeanVal(uint16_t meanVal, uint32_t count)
+initSwInt(void)
 {
-	char string[17];  // 16 characters across the display
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA))
+    {
+    }
 
-    OLEDStringDraw ("heli height raw", 0, 0);
-	
-    // Form a new string for the line.  The maximum width specified for the
-    //  number field ensures it is displayed right justified.
-    usnprintf (string, sizeof(string), "Mean ADC = %4d", meanVal);
-    // Update line on display.
-    OLEDStringDraw (string, 0, 1);
+    GPIOIntRegister(GPIO_PORTA_BASE, swIntHandler);
 
-    OLEDStringDraw("                ", 0, 2);
+    GPIOPinTypeGPIOInput(GPIO_PORTA_BASE, GPIO_PIN_7 );
+
+    GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_7, GPIO_DIR_MODE_IN);
+    GPIOIntTypeSet(GPIO_PORTA_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
+    GPIOIntEnable(GPIO_PORTA_BASE, GPIO_PIN_7);
 }
 
 void
-displayPercentageHeight(uint16_t meanVal, uint32_t count)
+display()
 {
     char string[17];  // 16 characters across the display
 
-    OLEDStringDraw ("Heli height %", 0, 0);
-
-    int16_t percentage;
-    percentage = (landed_reference - meanVal) / 8; //
-
     // Form a new string for the line.  The maximum width specified for the
     //  number field ensures it is displayed right justified.
-    usnprintf (string, sizeof(string), "height = %3d%%", percentage);
+    usnprintf (string, sizeof(string), "Height = %3d%%", altitude);
+    // Update line on display.
+    OLEDStringDraw (string, 0, 0);
+
+    uint16_t yaw_temp = yaw;
+    usnprintf (string, sizeof(string), "Yaw = %3d deg", yaw_temp);
     // Update line on display.
     OLEDStringDraw (string, 0, 1);
 
-    // DELETE THIS
-    uint16_t yaw = yaw_offset;
 
-
-    usnprintf (string, sizeof(string), "yaw = %3d deg", yaw);
+    usnprintf (string, sizeof(string), "Main duty = %3d%%", main_duty);
     // Update line on display.
     OLEDStringDraw (string, 0, 2);
+
+    usnprintf (string, sizeof(string), "Tail duty = %3d%%", secondary_duty);
+    // Update line on display.
+    OLEDStringDraw (string, 0, 3);
+
 }
 
-void clearDisplay()
+void printStatus()
 {
-    OLEDStringDraw("                ", 0, 0);
-    OLEDStringDraw("                ", 0, 1);
-    OLEDStringDraw("                ", 0, 2);
-    OLEDStringDraw("                ", 0, 3);
+    char string[31];
+
+
+    int temp_yaw = yaw;
+    int temp_desired_yaw = desired_yaw;
+
+
+    usnprintf (string, sizeof(string), "yaw = %d\r\n", temp_yaw);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "desired yaw = %d\r\n", temp_desired_yaw);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "altitude = %d%%\r\n", altitude);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "desired altitude = %d%%\r\n", desired_altitude);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "main duty = %d%%\r\n", main_duty);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "secondary duty = %d%%\r\n", secondary_duty);
+    UARTSend(string);
+
+    /*
+    int yawerror = integrated_yaw_error;
+    usnprintf (string, sizeof(string), "yaw = %d\r\n", yawerror);
+    UARTSend(string);
+    usnprintf (string, sizeof(string), "alt = %d\r\n", integrated_alt_error);
+    UARTSend(string);
+    */
 }
 
 void update_yaw()
@@ -236,45 +352,127 @@ void update_yaw()
     if(!yaw_A_state && !yaw_B_state)
     {
         if (!new_A && new_B)    //  clockwise
-            yaw_offset += 360. / 448.;
+            yaw += 360. / 448.;
         else                    // anticlockwise
-            yaw_offset -= 360. / 448.;
+            yaw -= 360. / 448.;
     }
 
     if(!yaw_A_state && yaw_B_state)
     {
         if (new_A && new_B)    //  clockwise
-            yaw_offset += 360. / 448.;
+            yaw += 360. / 448.;
         else                    // anticlockwise
-            yaw_offset -= 360. / 448.;
+            yaw -= 360. / 448.;
     }
 
     if(yaw_A_state && yaw_B_state)
     {
         if (new_A && !new_B)    //  clockwise
-            yaw_offset += 360. / 448.;
+            yaw += 360. / 448.;
         else                    // anticlockwise
-            yaw_offset -= 360. / 448.;
+            yaw -= 360. / 448.;
     }
 
     if(yaw_A_state && !yaw_B_state)
     {
         if (!new_A && !new_B)    //  clockwise
-            yaw_offset += 360. / 448.;
+            yaw += 360. / 448.;
         else                    // anticlockwise
-            yaw_offset -= 360. / 448.;
+            yaw -= 360. / 448.;
     }
 
 
-    if (yaw_offset > 360)
-        yaw_offset -= 360;
-    else if (yaw_offset < 0)
-        yaw_offset += 360;
+    if (yaw > 360)
+        yaw -= 360;
+    else if (yaw < 0)
+        yaw += 360;
 
     yaw_A_state = new_A;
     yaw_B_state = new_B;
 }
 
+/********************************************************
+ * Function to set the freq, duty cycle of M0PWM7
+ ********************************************************/
+void
+setDutyCycle (uint32_t ui32Duty, uint8_t rotor)
+{
+    // Calculate the PWM period corresponding to the freq.
+    uint32_t ui32Period =
+        SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ;
+
+    if (rotor == MAIN_ROTOR){
+        PWMPulseWidthSet(PWM_MAIN_BASE, PWM_MAIN_OUTNUM,
+        ui32Period * ui32Duty / 100);
+    }
+    else if (rotor == SECONDARY_ROTOR){
+        PWMPulseWidthSet(PWM_SECONDARY_BASE, PWM_SECONDARY_OUTNUM,
+            ui32Period * ui32Duty / 100);
+    }
+}
+
+void
+checkInput (void)
+{
+    if (checkButton(LEFT) == PUSHED) {
+        desired_yaw -= 15;
+        if (desired_yaw < 0) desired_yaw += 360;
+    }
+
+    if (checkButton(RIGHT) == PUSHED) {
+        desired_yaw += 15;
+        if (desired_yaw > 360) desired_yaw -= 360;
+    }
+
+    if (checkButton(UP) == PUSHED) {
+        if (desired_altitude != 100) {
+            desired_altitude += 10;
+        }
+    }
+
+    if (checkButton(DOWN) == PUSHED) {
+        if (desired_altitude != 0) {
+            desired_altitude -= 10;
+        }
+    }
+}
+
+void
+control (void)
+{
+    float timestep = 2. / SAMPLE_RATE_HZ;
+
+    float yaw_dif =  desired_yaw - yaw;
+    if (yaw_dif > 180)
+        yaw_dif -= 360;
+    else if (yaw_dif < -180)
+        yaw_dif += 360;
+
+    integrated_yaw_error += yaw_dif * timestep;
+
+    float prop_yaw = K_P * yaw_dif;
+    float integral_yaw = K_I * integrated_yaw_error;
+
+    secondary_duty = prop_yaw + integral_yaw;
+    if (secondary_duty > 100) secondary_duty = 100;
+    if (secondary_duty < 0) secondary_duty = 0;
+
+
+    float alt_dif = desired_altitude - altitude;
+    integrated_alt_error += alt_dif * timestep;
+
+    float prop_alt = K_P * alt_dif;
+    float integral_alt = K_I * integrated_alt_error;
+
+    main_duty = prop_alt + integral_alt;
+    if (main_duty > 100) main_duty = 100;
+    if (main_duty < 0) main_duty = 0;
+
+    setDutyCycle(secondary_duty, SECONDARY_ROTOR);
+    setDutyCycle(main_duty, MAIN_ROTOR);
+
+
+}
 
 int
 main(void)
@@ -282,9 +480,7 @@ main(void)
 	uint16_t i;
 	int32_t sum;
 	uint16_t mean;
-    uint8_t displayState = 0;
-    uint8_t butState = 0;
-
+	uint8_t heliState = LANDED;
 	
 	initClock ();
 	initADC ();
@@ -292,6 +488,9 @@ main(void)
 	initCircBuf (&g_inBuffer, BUF_SIZE);
     initButtons ();
     initYaw();
+    initSwInt();
+    initialisePWM ();
+    initialiseUSB_UART();
 
 
 	sum = 0;
@@ -328,39 +527,40 @@ main(void)
 			sum = sum + readCircBuf (&g_inBuffer);
 		// Calculate and display the rounded mean of the buffer contents
 		mean = (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
+		altitude = 100 * (landed_reference - mean) / SAMPLE_RATE_HZ;
 
 
-
-        butState = checkButton (LEFT);
-        if (butState == PUSHED) {
-            landed_reference = mean;
-            yaw_offset = 0;
+        if (swChanged){
+            swChanged = false;
+            bool swUp = GPIOPinRead(GPIO_PORTA_BASE, GPIO_PIN_7);
+            if (swUp && heliState == LANDED ) {
+                integrated_yaw_error = 0;
+                integrated_alt_error = 0;
+                heliState = FLYING;
+            }
+            else if (!swUp && heliState == FLYING) {
+                heliState = LANDING;
+                desired_altitude = 0;
+                desired_yaw = 0;
+            }
         }
 
+        if (heliState == FLYING)
+            checkInput();
 
-		butState = checkButton (UP);
-		if (butState == PUSHED) {
-		    displayState = (displayState + 1) % 3;
+        if (g_ulSampCnt % 2 == 0)
+            control();
+
+
+
+
+
+		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 2) == 0) {
+		    display();
 		}
-		if (g_ulSampCnt % 400 == 0) {
-            switch (displayState)
-            {
-            case 0:
-                //clearDisplay();
-                displayPercentageHeight (mean, g_ulSampCnt);
-                break;
-            case 1:
-                //clearDisplay();
-                displayMeanVal (mean, g_ulSampCnt);
-                break;
-            case 2:
-                clearDisplay();
-                break;
-            }
+		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 8) == 0) {
+		    printStatus();          //print all heli info through uart
 		}
-
-
-		//SysCtlDelay (SysCtlClockGet() / 6);  // Update display at ~ 2 Hz
 	}
 }
 
