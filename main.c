@@ -36,7 +36,6 @@
 #define PWM_RATE_MAX_DUTY    100
 #define PWM_FIXED_RATE_HZ     200
 #define PWM_DIVIDER_CODE   SYSCTL_PWMDIV_4
-#define PWM_DIVIDER        4
 
 //  PWM Hardware Details M0PWM7 (gen 3)
 //  ---Main Rotor PWM: PC5, J4-05
@@ -87,11 +86,13 @@ enum heli_states {STARTUP = 0, LANDED, LANDING, FLYING};
 static float integrated_yaw_error = 0;
 static float integrated_alt_error = 0;
 
+uint8_t heliState = STARTUP;
+
 static int16_t desired_altitude = 0;
 static float desired_yaw = 0;
 
-static float K_P = 5;
-static float K_I = 4;
+static float K_P = 2;
+static float K_I = 1;
 
 
 
@@ -184,7 +185,7 @@ initialisePWM (void)
                     PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
     // Set the initial PWM parameters
 
-    PWMGenPeriodSet(PWM_MAIN_BASE, PWM_MAIN_GEN, SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ);
+    PWMGenPeriodSet(PWM_MAIN_BASE, PWM_MAIN_GEN, SysCtlClockGet() / PWM_FIXED_RATE_HZ);
 
     PWMGenEnable(PWM_MAIN_BASE, PWM_MAIN_GEN);
 
@@ -201,7 +202,7 @@ initialisePWM (void)
     PWMGenConfigure(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN,
                     PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
     // Set the initial PWM parameters
-    PWMGenPeriodSet(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN, SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ);
+    PWMGenPeriodSet(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN, SysCtlClockGet() / PWM_FIXED_RATE_HZ);
 
     PWMGenEnable(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN);
 
@@ -267,6 +268,14 @@ initYaw(void)
     GPIODirModeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_DIR_MODE_IN);
     GPIOIntTypeSet(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_BOTH_EDGES);
     GPIOIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOC))
+    {
+    }
+
+    GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, GPIO_PIN_4);
+    GPIODirModeSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_DIR_MODE_IN);
 }
 
 void
@@ -282,7 +291,7 @@ initSwInt(void)
     GPIOPinTypeGPIOInput(GPIO_PORTA_BASE, GPIO_PIN_7 );
 
     GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_7, GPIO_DIR_MODE_IN);
-    GPIOIntTypeSet(GPIO_PORTA_BASE, GPIO_PIN_7, GPIO_BOTH_EDGES);
+    GPIOIntTypeSet(GPIO_PORTA_BASE, GPIO_PIN_7, GPIO_RISING_EDGE);
     GPIOIntEnable(GPIO_PORTA_BASE, GPIO_PIN_7);
 }
 
@@ -322,70 +331,78 @@ void printStatus()
     int temp_desired_yaw = desired_yaw;
 
 
-    usnprintf (string, sizeof(string), "yaw = %d\r\n", temp_yaw);
+    usnprintf (string, sizeof(string), "yaw %d [%d]\r\n", temp_yaw, temp_desired_yaw);
     UARTSend(string);
-    usnprintf (string, sizeof(string), "desired yaw = %d\r\n", temp_desired_yaw);
+    usnprintf (string, sizeof(string), "altitude %d%% [%d%%]\r\n", altitude, desired_altitude);
     UARTSend(string);
-    usnprintf (string, sizeof(string), "altitude = %d%%\r\n", altitude);
+    usnprintf (string, sizeof(string), "main %d%% tail %d%%\r\n", main_duty, secondary_duty);
     UARTSend(string);
-    usnprintf (string, sizeof(string), "desired altitude = %d%%\r\n", desired_altitude);
+    switch(heliState) {
+        case STARTUP :
+            usnprintf (string, sizeof(string), "mode: startup\r\n");
+            break;
+        case LANDED :
+            usnprintf (string, sizeof(string), "mode: landed\r\n");
+            break;
+        case LANDING :
+            usnprintf (string, sizeof(string), "mode: landing\r\n");
+            break;
+        case FLYING :
+            usnprintf (string, sizeof(string), "mode: flying\r\n");
+            break;
+    }
     UARTSend(string);
-    usnprintf (string, sizeof(string), "main duty = %d%%\r\n", main_duty);
-    UARTSend(string);
-    usnprintf (string, sizeof(string), "secondary duty = %d%%\r\n", secondary_duty);
-    UARTSend(string);
-
-    /*
-    int yawerror = integrated_yaw_error;
-    usnprintf (string, sizeof(string), "yaw = %d\r\n", yawerror);
-    UARTSend(string);
-    usnprintf (string, sizeof(string), "alt = %d\r\n", integrated_alt_error);
-    UARTSend(string);
-    */
 }
 
 void update_yaw()
 {
     bool new_A = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_0);
     bool new_B = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_1);
+    bool new_C = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
 
-    if(!yaw_A_state && !yaw_B_state)
-    {
-        if (!new_A && new_B)    //  clockwise
-            yaw += 360. / 448.;
-        else                    // anticlockwise
-            yaw -= 360. / 448.;
+    if (new_C) {
+        yaw = 0;
     }
+    else {
+        if(!yaw_A_state && !yaw_B_state)
+        {
+            if (!new_A && new_B)    //  clockwise
+                yaw += 360. / 448.;
+            else                    // anticlockwise
+                yaw -= 360. / 448.;
+        }
 
-    if(!yaw_A_state && yaw_B_state)
-    {
-        if (new_A && new_B)    //  clockwise
-            yaw += 360. / 448.;
-        else                    // anticlockwise
-            yaw -= 360. / 448.;
+        if(!yaw_A_state && yaw_B_state)
+        {
+            if (new_A && new_B)    //  clockwise
+                yaw += 360. / 448.;
+            else                    // anticlockwise
+                yaw -= 360. / 448.;
+        }
+
+        if(yaw_A_state && yaw_B_state)
+        {
+            if (new_A && !new_B)    //  clockwise
+                yaw += 360. / 448.;
+            else                    // anticlockwise
+                yaw -= 360. / 448.;
+        }
+
+        if(yaw_A_state && !yaw_B_state)
+        {
+            if (!new_A && !new_B)    //  clockwise
+                yaw += 360. / 448.;
+            else                    // anticlockwise
+                yaw -= 360. / 448.;
+        }
+
+
+
+        if (yaw > 360)
+            yaw -= 360;
+        else if (yaw < 0)
+            yaw += 360;
     }
-
-    if(yaw_A_state && yaw_B_state)
-    {
-        if (new_A && !new_B)    //  clockwise
-            yaw += 360. / 448.;
-        else                    // anticlockwise
-            yaw -= 360. / 448.;
-    }
-
-    if(yaw_A_state && !yaw_B_state)
-    {
-        if (!new_A && !new_B)    //  clockwise
-            yaw += 360. / 448.;
-        else                    // anticlockwise
-            yaw -= 360. / 448.;
-    }
-
-
-    if (yaw > 360)
-        yaw -= 360;
-    else if (yaw < 0)
-        yaw += 360;
 
     yaw_A_state = new_A;
     yaw_B_state = new_B;
@@ -399,7 +416,7 @@ setDutyCycle (uint32_t ui32Duty, uint8_t rotor)
 {
     // Calculate the PWM period corresponding to the freq.
     uint32_t ui32Period =
-        SysCtlClockGet() / PWM_DIVIDER / PWM_FIXED_RATE_HZ;
+        SysCtlClockGet() / PWM_FIXED_RATE_HZ;
 
     if (rotor == MAIN_ROTOR){
         PWMPulseWidthSet(PWM_MAIN_BASE, PWM_MAIN_OUTNUM,
@@ -471,8 +488,21 @@ control (void)
     setDutyCycle(secondary_duty, SECONDARY_ROTOR);
     setDutyCycle(main_duty, MAIN_ROTOR);
 
-
+    if (heliState ==  LANDING && altitude < 5 && (yaw > 365 || yaw < 5))
+        heliState = LANDED;
 }
+
+void
+findRef(void)
+{
+    setDutyCycle(45, SECONDARY_ROTOR);
+    bool ref = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
+    while (!ref)
+        ref = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
+    heliState = LANDED;
+    setDutyCycle(0, SECONDARY_ROTOR);
+}
+
 
 int
 main(void)
@@ -480,7 +510,6 @@ main(void)
 	uint16_t i;
 	int32_t sum;
 	uint16_t mean;
-	uint8_t heliState = LANDED;
 	
 	initClock ();
 	initADC ();
@@ -532,13 +561,15 @@ main(void)
 
         if (swChanged){
             swChanged = false;
-            bool swUp = GPIOPinRead(GPIO_PORTA_BASE, GPIO_PIN_7);
-            if (swUp && heliState == LANDED ) {
+            if (heliState == STARTUP) {
+                findRef();
+            }
+            if (heliState == LANDED) {
                 integrated_yaw_error = 0;
                 integrated_alt_error = 0;
                 heliState = FLYING;
             }
-            else if (!swUp && heliState == FLYING) {
+            else if (heliState == FLYING) {
                 heliState = LANDING;
                 desired_altitude = 0;
                 desired_yaw = 0;
@@ -548,12 +579,8 @@ main(void)
         if (heliState == FLYING)
             checkInput();
 
-        if (g_ulSampCnt % 2 == 0)
+        if (heliState != LANDED && g_ulSampCnt % 2 == 0)
             control();
-
-
-
-
 
 		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 2) == 0) {
 		    display();
