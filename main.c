@@ -86,14 +86,22 @@ static int32_t secondary_duty = 0;
 enum heli_states {INIT = 0, STARTUP, LANDED, LANDING, FLYING};
 static float integrated_yaw_error = 0;
 static float integrated_alt_error = 0;
+static float alt_error_previous = 0;
+static float yaw_error_previous = 0;
+
 
 uint8_t heliState = INIT;
 
 static int16_t desired_altitude = 0;
 static float desired_yaw = 0;
 
-static float K_P = 2;
-static float K_I = 1;
+static float K_P_Y = 1.5;
+static float K_I_Y = 0.5;
+static float K_D_Y = 0.2;
+
+static float K_P_M = 0.5;
+static float K_I_M = 0.2;
+static float K_D_M = 0.05;
 
 
 
@@ -362,9 +370,9 @@ void update_yaw()
 {
     bool new_A = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_0);
     bool new_B = GPIOPinRead(GPIO_PORTB_BASE, GPIO_PIN_1);
-    bool new_C = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
+    bool new_C = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_4);
 
-    if (new_C) {
+    if (!new_C) {
         yaw = 0;
     }
     else {
@@ -410,7 +418,7 @@ void update_yaw()
 
     yaw_A_state = new_A;
     yaw_B_state = new_B;
-    ref_state = new_C;
+    ref_state = !new_C;
 }
 
 /********************************************************
@@ -462,7 +470,7 @@ checkInput (void)
 void
 control (void)
 {
-    float timestep = 2. / SAMPLE_RATE_HZ;
+    float timestep = 1. / 20;
 
     float yaw_dif =  desired_yaw - yaw;
     if (yaw_dif > 180)
@@ -472,25 +480,31 @@ control (void)
 
     integrated_yaw_error += yaw_dif * timestep;
 
-    float prop_yaw = K_P * yaw_dif;
-    float integral_yaw = K_I * integrated_yaw_error;
+    float div_error = yaw_dif - yaw_error_previous;
 
-    secondary_duty = prop_yaw + integral_yaw;
-    if (secondary_duty > 100) secondary_duty = 100;
-    if (secondary_duty < 0) secondary_duty = 0;
+    float div_yaw = K_D_Y * div_error;
+    float prop_yaw = K_P_Y * yaw_dif;
+    float integral_yaw = K_I_Y * integrated_yaw_error;
+
+    secondary_duty = prop_yaw + integral_yaw + div_yaw;
+    if (secondary_duty > 80) secondary_duty = 80;
+    if (secondary_duty < 20) secondary_duty = 20;
 
 
     float alt_dif = desired_altitude - altitude;
     integrated_alt_error += alt_dif * timestep;
 
-    float prop_alt = K_P * alt_dif;
-    float integral_alt = K_I * integrated_alt_error;
+    div_error = alt_dif - alt_error_previous;
 
-    main_duty = prop_alt + integral_alt;
-    if (main_duty > 100) main_duty = 100;
-    if (main_duty < 0) main_duty = 0;
+    float div_alt = K_D_M * div_error;
+    float prop_alt = K_P_M * alt_dif;
+    float integral_alt = K_I_M * integrated_alt_error;
 
-    if (heliState ==  LANDING && altitude < 5 && (yaw > 365 || yaw < 5)) {
+    main_duty = prop_alt + integral_alt + div_alt;
+    if (main_duty > 80) main_duty = 80;
+    if (main_duty < 20) main_duty = 20;
+
+    if (heliState ==  LANDING && altitude < 5) {
         secondary_duty = 0;
         main_duty = 0;
         heliState = LANDED;
@@ -498,8 +512,6 @@ control (void)
 
     setDutyCycle(secondary_duty, SECONDARY_ROTOR);
     setDutyCycle(main_duty, MAIN_ROTOR);
-
-
 }
 
 
@@ -563,8 +575,10 @@ main(void)
             swChanged = false;
 
             switch (heliState) {
-            case INIT :     secondary_duty = 10;
+            case INIT :     main_duty = 22;
+                            secondary_duty = 38;
                             setDutyCycle(secondary_duty, SECONDARY_ROTOR);
+                            setDutyCycle(main_duty, MAIN_ROTOR);
                             heliState = STARTUP;
                             break;
             case LANDED :   integrated_yaw_error = 0;
@@ -580,15 +594,21 @@ main(void)
 
         switch (heliState) {
             case STARTUP : if (ref_state) {
+                                main_duty = 0;
                                 secondary_duty = 0;
                                 setDutyCycle(secondary_duty, SECONDARY_ROTOR);
+                                setDutyCycle(main_duty, MAIN_ROTOR);
                                 heliState = FLYING;
                             }
                             break;
             case FLYING :   checkInput();
-                            control();
+                            if (g_ulSampCnt % (SAMPLE_RATE_HZ / 20) == 0) {
+                                control();
+                            }
                             break;
-            case LANDING :  control();
+            case LANDING :  if (g_ulSampCnt % (SAMPLE_RATE_HZ / 20) == 0) {
+                                control();
+                            }
                             break;
         }
 
