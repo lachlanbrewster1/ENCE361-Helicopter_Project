@@ -78,15 +78,16 @@ static uint16_t altitude;
 static float yaw = 0;
 static bool yaw_A_state = false;
 static bool yaw_B_state = false;
+static bool ref_state = false;
 static volatile bool yaw_flag = false;
 static volatile bool swChanged = false;
 static int32_t main_duty = 0;
 static int32_t secondary_duty = 0;
-enum heli_states {STARTUP = 0, LANDED, LANDING, FLYING};
+enum heli_states {INIT = 0, STARTUP, LANDED, LANDING, FLYING};
 static float integrated_yaw_error = 0;
 static float integrated_alt_error = 0;
 
-uint8_t heliState = STARTUP;
+uint8_t heliState = INIT;
 
 static int16_t desired_altitude = 0;
 static float desired_yaw = 0;
@@ -338,6 +339,9 @@ void printStatus()
     usnprintf (string, sizeof(string), "main %d%% tail %d%%\r\n", main_duty, secondary_duty);
     UARTSend(string);
     switch(heliState) {
+        case INIT :
+            usnprintf (string, sizeof(string), "mode: init\r\n");
+            break;
         case STARTUP :
             usnprintf (string, sizeof(string), "mode: startup\r\n");
             break;
@@ -406,6 +410,7 @@ void update_yaw()
 
     yaw_A_state = new_A;
     yaw_B_state = new_B;
+    ref_state = new_C;
 }
 
 /********************************************************
@@ -485,23 +490,18 @@ control (void)
     if (main_duty > 100) main_duty = 100;
     if (main_duty < 0) main_duty = 0;
 
+    if (heliState ==  LANDING && altitude < 5 && (yaw > 365 || yaw < 5)) {
+        secondary_duty = 0;
+        main_duty = 0;
+        heliState = LANDED;
+    }
+
     setDutyCycle(secondary_duty, SECONDARY_ROTOR);
     setDutyCycle(main_duty, MAIN_ROTOR);
 
-    if (heliState ==  LANDING && altitude < 5 && (yaw > 365 || yaw < 5))
-        heliState = LANDED;
+
 }
 
-void
-findRef(void)
-{
-    setDutyCycle(45, SECONDARY_ROTOR);
-    bool ref = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
-    while (!ref)
-        ref = GPIOPinRead(GPIO_PORTC_BASE, GPIO_PIN_5);
-    heliState = LANDED;
-    setDutyCycle(0, SECONDARY_ROTOR);
-}
 
 
 int
@@ -561,26 +561,36 @@ main(void)
 
         if (swChanged){
             swChanged = false;
-            if (heliState == STARTUP) {
-                findRef();
-            }
-            if (heliState == LANDED) {
-                integrated_yaw_error = 0;
-                integrated_alt_error = 0;
-                heliState = FLYING;
-            }
-            else if (heliState == FLYING) {
-                heliState = LANDING;
-                desired_altitude = 0;
-                desired_yaw = 0;
+
+            switch (heliState) {
+            case INIT :     secondary_duty = 10;
+                            setDutyCycle(secondary_duty, SECONDARY_ROTOR);
+                            heliState = STARTUP;
+                            break;
+            case LANDED :   integrated_yaw_error = 0;
+                            integrated_alt_error = 0;
+                            heliState = FLYING;
+                            break;
+            case FLYING :   desired_altitude = 0;
+                            desired_yaw = 0;
+                            heliState = LANDING;
+                            break;
             }
         }
 
-        if (heliState == FLYING)
-            checkInput();
-
-        if (heliState != LANDED && g_ulSampCnt % 2 == 0)
-            control();
+        switch (heliState) {
+            case STARTUP : if (ref_state) {
+                                secondary_duty = 0;
+                                setDutyCycle(secondary_duty, SECONDARY_ROTOR);
+                                heliState = FLYING;
+                            }
+                            break;
+            case FLYING :   checkInput();
+                            control();
+                            break;
+            case LANDING :  control();
+                            break;
+        }
 
 		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 2) == 0) {
 		    display();
