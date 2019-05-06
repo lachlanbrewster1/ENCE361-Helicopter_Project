@@ -1,8 +1,8 @@
-#ifndef BUTTONS_H_
-#define BUTTONS_H_
+#ifndef INPUT_H_
+#define INPUT_H_
 
 // *******************************************************
-// buttons4.h
+// input.h
 //
 // Support for a set of FOUR specific buttons on the Tiva/Orbit.
 // ENCE361 sample code.
@@ -20,7 +20,7 @@
 //*****************************************************************************
 // Constants
 //*****************************************************************************
-enum butNames {UP = 0, DOWN, LEFT, RIGHT, NUM_BUTS};
+enum butNames {UP = 0, DOWN, LEFT, RIGHT, SW, NUM_BUTS};
 enum butStates {RELEASED = 0, PUSHED, NO_CHANGE};
 // UP button
 #define UP_BUT_PERIPH  SYSCTL_PERIPH_GPIOE
@@ -42,6 +42,12 @@ enum butStates {RELEASED = 0, PUSHED, NO_CHANGE};
 #define RIGHT_BUT_PORT_BASE  GPIO_PORTF_BASE
 #define RIGHT_BUT_PIN  GPIO_PIN_0
 #define RIGHT_BUT_NORMAL  true
+// SWITCH
+#define SW_PERIPH  SYSCTL_PERIPH_GPIOA
+#define SW_PORT_BASE  GPIO_PORTA_BASE
+#define SW_PIN  GPIO_PIN_7
+#define SW_NORMAL  true
+
 
 #define NUM_BUT_POLLS 3
 // Debounce algorithm: A state machine is associated with each button.
@@ -50,25 +56,25 @@ enum butStates {RELEASED = 0, PUSHED, NO_CHANGE};
 // a flag is set.  Set NUM_BUT_POLLS according to the polling rate.
 
 // *******************************************************
-// initButtons: Initialise the variables associated with the set of buttons
+// initInput: Initialise the variables associated with the set of buttons
 // defined by the constants above.
 void
-initButtons (void);
+initInput (void);
 
 // *******************************************************
-// updateButtons: Function designed to be called regularly. It polls all
+// updateInput: Function designed to be called regularly. It polls all
 // buttons once and updates variables associated with the buttons if
 // necessary.  It is efficient enough to be part of an ISR, e.g. from
 // a SysTick interrupt.
 void
-updateButtons (void);
+updateInput (void);
 
 // *******************************************************
-// checkButton: Function returns the new button state if the button state
+// checkInput: Function returns the new button state if the button state
 // (PUSHED or RELEASED) has changed since the last call, otherwise returns
 // NO_CHANGE.  The argument butName should be one of constants in the
 // enumeration butStates, excluding 'NUM_BUTS'. Safe under interrupt.
 uint8_t
-checkButton (uint8_t butName);
+checkInput (uint8_t butName);
 
-#endif /*BUTTONS_H_*/
+#endif /*INPUT_H_*/

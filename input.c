@@ -1,11 +1,11 @@
 // *******************************************************
 // 
-// buttons4.c
+// input.c
 //
-// Support for a set of FOUR specific buttons on the Tiva/Orbit.
+// Support for a set of 5 specific inputs on the Tiva/Orbit.
 // ENCE361 sample code.
 // The buttons are:  UP and DOWN (on the Orbit daughterboard) plus
-// LEFT and RIGHT on the Tiva.
+// LEFT and RIGHT on the Tiva, and SW1 on the boosterpack
 //
 // Note that pin PF0 (the pin for the RIGHT pushbutton - SW2 on
 //  the Tiva board) needs special treatment - See PhilsNotesOnTiva.rtf.
@@ -15,6 +15,7 @@
 // 
 // *******************************************************
 
+#include <input.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "inc/hw_memmap.h"
@@ -23,7 +24,6 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/debug.h"
 #include "inc/tm4c123gh6pm.h"  // Board specific defines (for PF0)
-#include "buttons4.h"
 
 
 // *******************************************************
@@ -38,7 +38,7 @@ static bool but_normal[NUM_BUTS];   // Corresponds to the electrical state
 // initButtons: Initialise the variables associated with the set of buttons
 // defined by the constants in the buttons2.h header file.
 void
-initButtons (void)
+initInput (void)
 {
 	int i;
 
@@ -74,6 +74,12 @@ initButtons (void)
        GPIO_PIN_TYPE_STD_WPU);
     but_normal[RIGHT] = RIGHT_BUT_NORMAL;
 
+    SysCtlPeripheralEnable (SW_PERIPH);
+    GPIOPinTypeGPIOInput (SW_PORT_BASE, SW_PIN);
+    GPIOPadConfigSet (SW_PORT_BASE, SW_PIN, GPIO_STRENGTH_2MA,
+       GPIO_PIN_TYPE_STD_WPD);
+    but_normal[DOWN] = SW_NORMAL;
+
 	for (i = 0; i < NUM_BUTS; i++)
 	{
 		but_state[i] = but_normal[i];
@@ -92,7 +98,7 @@ initButtons (void)
 // read the pin in the opposite condition, before the state changes and
 // a flag is set.  Set NUM_BUT_POLLS according to the polling rate.
 void
-updateButtons (void)
+updateInput (void)
 {
 	bool but_value[NUM_BUTS];
 	int i;
@@ -102,6 +108,7 @@ updateButtons (void)
 	but_value[DOWN] = (GPIOPinRead (DOWN_BUT_PORT_BASE, DOWN_BUT_PIN) == DOWN_BUT_PIN);
     but_value[LEFT] = (GPIOPinRead (LEFT_BUT_PORT_BASE, LEFT_BUT_PIN) == LEFT_BUT_PIN);
     but_value[RIGHT] = (GPIOPinRead (RIGHT_BUT_PORT_BASE, RIGHT_BUT_PIN) == RIGHT_BUT_PIN);
+    but_value[SW] = (GPIOPinRead (SW_PORT_BASE, SW_PIN) == SW_PIN);
 	// Iterate through the buttons, updating button variables as required
 	for (i = 0; i < NUM_BUTS; i++)
 	{
@@ -125,7 +132,7 @@ updateButtons (void)
 // logical state (PUSHED or RELEASED) has changed since the last call,
 // otherwise returns NO_CHANGE.
 uint8_t
-checkButton (uint8_t butName)
+checkInput (uint8_t butName)
 {
 	if (but_flag[butName])
 	{

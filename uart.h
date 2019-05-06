@@ -19,11 +19,11 @@
 #include "driverlib/systick.h"
 #include "driverlib/debug.h"
 #include "driverlib/pin_map.h"
+#include "input.h"
 #include "utils/ustdlib.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "OrbitOLED/OrbitOLEDInterface.h"
-#include "buttons4.h"
 
 //********************************************************
 // Constants
