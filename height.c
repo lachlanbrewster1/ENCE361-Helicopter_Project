@@ -1,5 +1,5 @@
 /*
- * ADC.c
+ * height.c
  *
  *  Created on: 7/05/2019
  *      Author: bsl28
@@ -19,10 +19,11 @@
 #include "driverlib/debug.h"
 #include "utils/ustdlib.h"
 #include "circBufT.h"
-#include "ADC.h"
+#include "height.h"
 
 
 static circBuf_t g_inBuffer;     // Buffer of size BUF_SIZE integers (sample values)
+static uint16_t landed_ref;
 
 
 
@@ -94,7 +95,7 @@ initADC (void)
 
 // Calculate the rounded mean of the buffer contents
 uint16_t
-calculateMeanADC(void)
+calculateMeanHeight(void)
 {
     uint32_t sum = 0;
     uint16_t i = 0;
@@ -102,7 +103,18 @@ calculateMeanADC(void)
     for ( i = 0; i < BUF_SIZE; i++)
             sum = sum + readCircBuf (&g_inBuffer);
         // Calculate and display the rounded mean of the buffer contents
-    return (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
-
+    uint16_t mean = (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
+    return (2 * (100 * (landed_ref - mean)) + 1000) / 2 / 1000; //100% *(our new height) / 1000mV
 }
 
+
+void
+setLandedRef(void)
+{
+    uint16_t i;
+    uint32_t sum = 0;
+    for (i = 0; i < BUF_SIZE; i++)
+            sum = sum + readCircBuf (&g_inBuffer);
+        // Calculate and display the rounded mean of the buffer contents
+    landed_ref = (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
+}

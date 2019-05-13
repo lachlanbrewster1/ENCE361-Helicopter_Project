@@ -1,12 +1,12 @@
 /*
- * ADC.h
+ * height.h
  *
  *  Created on: 7/05/2019
  *      Author: bsl28
  */
 
-#ifndef ADC_H_
-#define ADC_H_
+#ifndef HEIGHT_H_
+#define HEIGHT_H_
 
 #define BUF_SIZE 100
 
@@ -22,5 +22,11 @@ void ADCIntHandler(void);
 //*****************************************************************************
 void initADC (void);
 
+uint16_t
+calculateMeanHeight(void);
 
-#endif /* ADC_H_ */
+void
+setLandedRef(void);
+
+
+#endif /* HEIGHT_H_ */

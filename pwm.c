@@ -5,7 +5,6 @@
  *      Author: lbr63
  */
 
-#include "pwm.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -19,6 +18,8 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/debug.h"
 #include "utils/ustdlib.h"
+#include "driverlib/pin_map.h"
+#include "pwm.h"
 
 
 

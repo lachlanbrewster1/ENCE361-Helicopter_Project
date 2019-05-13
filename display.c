@@ -35,7 +35,7 @@ initialiseDisplay(void)
 
 
 void
-displayStatusOLED()
+displayStatusOLED(void)
 {
     char string[17];  // 16 characters across the display
 

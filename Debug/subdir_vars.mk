@@ -9,75 +9,93 @@ CMD_SRCS += \
 ../tm4c123gh6pm.cmd 
 
 C_SRCS += \
-../ADC.c \
 ../circBufT.c \
 ../clock.c \
+../control.c \
 ../display.c \
+../height.c \
 ../input.c \
 ../main.c \
 ../pwm.c \
+../rotors.c \
 ../tm4c123gh6pm_startup_ccs.c \
 ../uart.c \
-C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c 
+C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c \
+../yaw.c 
 
 C_DEPS += \
-./ADC.d \
 ./circBufT.d \
 ./clock.d \
+./control.d \
 ./display.d \
+./height.d \
 ./input.d \
 ./main.d \
 ./pwm.d \
+./rotors.d \
 ./tm4c123gh6pm_startup_ccs.d \
 ./uart.d \
-./ustdlib.d 
+./ustdlib.d \
+./yaw.d 
 
 OBJS += \
-./ADC.obj \
 ./circBufT.obj \
 ./clock.obj \
+./control.obj \
 ./display.obj \
+./height.obj \
 ./input.obj \
 ./main.obj \
 ./pwm.obj \
+./rotors.obj \
 ./tm4c123gh6pm_startup_ccs.obj \
 ./uart.obj \
-./ustdlib.obj 
+./ustdlib.obj \
+./yaw.obj 
 
 OBJS__QUOTED += \
-"ADC.obj" \
 "circBufT.obj" \
 "clock.obj" \
+"control.obj" \
 "display.obj" \
+"height.obj" \
 "input.obj" \
 "main.obj" \
 "pwm.obj" \
+"rotors.obj" \
 "tm4c123gh6pm_startup_ccs.obj" \
 "uart.obj" \
-"ustdlib.obj" 
+"ustdlib.obj" \
+"yaw.obj" 
 
 C_DEPS__QUOTED += \
-"ADC.d" \
 "circBufT.d" \
 "clock.d" \
+"control.d" \
 "display.d" \
+"height.d" \
 "input.d" \
 "main.d" \
 "pwm.d" \
+"rotors.d" \
 "tm4c123gh6pm_startup_ccs.d" \
 "uart.d" \
-"ustdlib.d" 
+"ustdlib.d" \
+"yaw.d" 
 
 C_SRCS__QUOTED += \
-"../ADC.c" \
 "../circBufT.c" \
 "../clock.c" \
+"../control.c" \
 "../display.c" \
+"../height.c" \
 "../input.c" \
 "../main.c" \
 "../pwm.c" \
+"../rotors.c" \
 "../tm4c123gh6pm_startup_ccs.c" \
 "../uart.c" \
-"C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c" 
+"C:/ti/TivaWare_C_Series-2.1.4.178/utils/ustdlib.c" \
+"../yaw.c" 
 
 
