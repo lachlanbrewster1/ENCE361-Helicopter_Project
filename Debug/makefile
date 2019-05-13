@@ -4,15 +4,19 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.9.LTS
+CG_TOOL_ROOT := C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.6.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./buttons4.obj" \
+"./ADC.obj" \
 "./circBufT.obj" \
+"./clock.obj" \
+"./display.obj" \
+"./input.obj" \
 "./main.obj" \
+"./pwm.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./uart.obj" \
 "./ustdlib.obj" \
@@ -137,42 +141,42 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-tue_am_group-10.out \
+Helicopter_Project.out \
 
 EXE_OUTPUTS__QUOTED += \
-"tue_am_group-10.out" \
+"Helicopter_Project.out" \
 
 BIN_OUTPUTS += \
-tue_am_group-10.hex \
+Helicopter_Project.hex \
 
 BIN_OUTPUTS__QUOTED += \
-"tue_am_group-10.hex" \
+"Helicopter_Project.hex" \
 
 
 # All Target
 all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
-	@$(MAKE) --no-print-directory -Onone "tue_am_group-10.out"
+	@$(MAKE) --no-print-directory -Onone "Helicopter_Project.out"
 
 # Tool invocations
-tue_am_group-10.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
+Helicopter_Project.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: ARM Linker'
-	"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.9.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"tue_am_group-10.map" --heap_size=512 --stack_size=512 -i"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.9.LTS/lib" -i"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.9.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="tue_am_group-10_linkInfo.xml" --rom_model -o "tue_am_group-10.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.6.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"Helicopter_Project.map" --heap_size=512 --stack_size=512 -i"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.6.LTS/lib" -i"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.6.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="Helicopter_Project_linkInfo.xml" --rom_model -o "Helicopter_Project.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
-tue_am_group-10.hex: $(EXE_OUTPUTS)
+Helicopter_Project.hex: $(EXE_OUTPUTS)
 	@echo 'Building files: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo 'Invoking: ARM Hex Utility'
-	"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.9.LTS/bin/armhex"  -o "tue_am_group-10.hex" $(EXE_OUTPUTS__QUOTED)
+	"C:/ti/ccsv7/tools/compiler/ti-cgt-arm_16.9.6.LTS/bin/armhex"  -o "Helicopter_Project.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "buttons4.obj" "circBufT.obj" "main.obj" "tm4c123gh6pm_startup_ccs.obj" "uart.obj" "ustdlib.obj" "OrbitOLED\OrbitOLEDInterface.obj" "OrbitOLED\lib_OrbitOled\ChrFont0.obj" "OrbitOLED\lib_OrbitOled\FillPat.obj" "OrbitOLED\lib_OrbitOled\OrbitOled.obj" "OrbitOLED\lib_OrbitOled\OrbitOledChar.obj" "OrbitOLED\lib_OrbitOled\OrbitOledGrph.obj" "OrbitOLED\lib_OrbitOled\delay.obj" 
-	-$(RM) "buttons4.d" "circBufT.d" "main.d" "tm4c123gh6pm_startup_ccs.d" "uart.d" "ustdlib.d" "OrbitOLED\OrbitOLEDInterface.d" "OrbitOLED\lib_OrbitOled\ChrFont0.d" "OrbitOLED\lib_OrbitOled\FillPat.d" "OrbitOLED\lib_OrbitOled\OrbitOled.d" "OrbitOLED\lib_OrbitOled\OrbitOledChar.d" "OrbitOLED\lib_OrbitOled\OrbitOledGrph.d" "OrbitOLED\lib_OrbitOled\delay.d" 
+	-$(RM) "ADC.obj" "circBufT.obj" "clock.obj" "display.obj" "input.obj" "main.obj" "pwm.obj" "tm4c123gh6pm_startup_ccs.obj" "uart.obj" "ustdlib.obj" "OrbitOLED\OrbitOLEDInterface.obj" "OrbitOLED\lib_OrbitOled\ChrFont0.obj" "OrbitOLED\lib_OrbitOled\FillPat.obj" "OrbitOLED\lib_OrbitOled\OrbitOled.obj" "OrbitOLED\lib_OrbitOled\OrbitOledChar.obj" "OrbitOLED\lib_OrbitOled\OrbitOledGrph.obj" "OrbitOLED\lib_OrbitOled\delay.obj" 
+	-$(RM) "ADC.d" "circBufT.d" "clock.d" "display.d" "input.d" "main.d" "pwm.d" "tm4c123gh6pm_startup_ccs.d" "uart.d" "ustdlib.d" "OrbitOLED\OrbitOLEDInterface.d" "OrbitOLED\lib_OrbitOled\ChrFont0.d" "OrbitOLED\lib_OrbitOled\FillPat.d" "OrbitOLED\lib_OrbitOled\OrbitOled.d" "OrbitOLED\lib_OrbitOled\OrbitOledChar.d" "OrbitOLED\lib_OrbitOled\OrbitOledGrph.d" "OrbitOLED\lib_OrbitOled\delay.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

@@ -22,11 +22,15 @@
 #include "driverlib/debug.h"
 #include "utils/ustdlib.h"
 #include "circBufT.h"
-#include "OrbitOLED/OrbitOLEDInterface.h"
 #include "uart.h"
 #include "clock.h"
 #include "input.h"
 #include "ADC.h"
+#include "display.h"
+#include "pwm.h"
+#include "input.h"
+
+
 
 
 
@@ -34,37 +38,8 @@
 // Definitions
 //*****************************************************************************
 
-// PWM configuration
-#define PWM_START_DUTY  0
-#define PWM_RATE_MIN_DUTY    0
-#define PWM_RATE_MAX_DUTY    100
-#define PWM_FIXED_RATE_HZ     200
-#define PWM_DIVIDER_CODE   SYSCTL_PWMDIV_4
 
-//  PWM Hardware Details M0PWM7 (gen 3)
-//  ---Main Rotor PWM: PC5, J4-05
-#define PWM_MAIN_BASE        PWM0_BASE
-#define PWM_MAIN_GEN         PWM_GEN_3
-#define PWM_MAIN_OUTNUM      PWM_OUT_7
-#define PWM_MAIN_OUTBIT      PWM_OUT_7_BIT
-#define PWM_MAIN_PERIPH_PWM  SYSCTL_PERIPH_PWM0
-#define PWM_MAIN_PERIPH_GPIO SYSCTL_PERIPH_GPIOC
-#define PWM_MAIN_GPIO_BASE   GPIO_PORTC_BASE
-#define PWM_MAIN_GPIO_CONFIG GPIO_PC5_M0PWM7
-#define PWM_MAIN_GPIO_PIN    GPIO_PIN_5
 
-#define PWM_SECONDARY_BASE        PWM1_BASE
-#define PWM_SECONDARY_GEN         PWM_GEN_2
-#define PWM_SECONDARY_OUTNUM      PWM_OUT_5
-#define PWM_SECONDARY_OUTBIT      PWM_OUT_5_BIT
-#define PWM_SECONDARY_PERIPH_PWM  SYSCTL_PERIPH_PWM1
-#define PWM_SECONDARY_PERIPH_GPIO SYSCTL_PERIPH_GPIOF
-#define PWM_SECONDARY_GPIO_BASE   GPIO_PORTF_BASE
-#define PWM_SECONDARY_GPIO_CONFIG GPIO_PF1_M1PWM5
-#define PWM_SECONDARY_GPIO_PIN    GPIO_PIN_1
-
-#define MAIN_ROTOR 1
-#define SECONDARY_ROTOR 2
 
 //*****************************************************************************
 // Constants
@@ -115,52 +90,6 @@ yawIntHandler(void)
 
 
 
-void
-initialisePWM (void)
-{
-    // Initialise main rotor
-    SysCtlPeripheralEnable(PWM_MAIN_PERIPH_PWM);
-    SysCtlPeripheralEnable(PWM_MAIN_PERIPH_GPIO);
-
-    GPIOPinConfigure(PWM_MAIN_GPIO_CONFIG);
-    GPIOPinTypePWM(PWM_MAIN_GPIO_BASE, PWM_MAIN_GPIO_PIN);
-
-    PWMGenConfigure(PWM_MAIN_BASE, PWM_MAIN_GEN,
-                    PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
-    // Set the initial PWM parameters
-
-    PWMGenPeriodSet(PWM_MAIN_BASE, PWM_MAIN_GEN, SysCtlClockGet() / PWM_FIXED_RATE_HZ);
-
-    PWMGenEnable(PWM_MAIN_BASE, PWM_MAIN_GEN);
-
-    PWMOutputState(PWM_MAIN_BASE, PWM_MAIN_OUTBIT, true);
-
-
-    // Initialise secondary rotor
-    SysCtlPeripheralEnable(PWM_SECONDARY_PERIPH_PWM);
-    SysCtlPeripheralEnable(PWM_SECONDARY_PERIPH_GPIO);
-
-    GPIOPinConfigure(PWM_SECONDARY_GPIO_CONFIG);
-    GPIOPinTypePWM(PWM_SECONDARY_GPIO_BASE, PWM_SECONDARY_GPIO_PIN);
-
-    PWMGenConfigure(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN,
-                    PWM_GEN_MODE_UP_DOWN | PWM_GEN_MODE_NO_SYNC);
-    // Set the initial PWM parameters
-    PWMGenPeriodSet(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN, SysCtlClockGet() / PWM_FIXED_RATE_HZ);
-
-    PWMGenEnable(PWM_SECONDARY_BASE, PWM_SECONDARY_GEN);
-
-    PWMOutputState(PWM_SECONDARY_BASE, PWM_SECONDARY_OUTBIT, true);
-}
-
-
-
-void
-initDisplay (void)
-{
-    // intialise the Orbit OLED display
-    OLEDInitialise ();
-}
 
 void
 initYaw(void)
@@ -187,67 +116,7 @@ initYaw(void)
     GPIODirModeSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_DIR_MODE_IN);
 }
 
-void
-display()
-{
-    char string[17];  // 16 characters across the display
 
-    // Form a new string for the line.  The maximum width specified for the
-    //  number field ensures it is displayed right justified.
-    usnprintf (string, sizeof(string), "Height = %3d%%", altitude);
-    // Update line on display.
-    OLEDStringDraw (string, 0, 0);
-
-    uint16_t yaw_temp = yaw;
-    usnprintf (string, sizeof(string), "Yaw = %3d deg", yaw_temp);
-    // Update line on display.
-    OLEDStringDraw (string, 0, 1);
-
-
-    usnprintf (string, sizeof(string), "Main duty = %3d%%", main_duty);
-    // Update line on display.
-    OLEDStringDraw (string, 0, 2);
-
-    usnprintf (string, sizeof(string), "Tail duty = %3d%%", secondary_duty);
-    // Update line on display.
-    OLEDStringDraw (string, 0, 3);
-
-}
-
-void printStatus()
-{
-    char string[31];
-
-
-    int temp_yaw = yaw;
-    int temp_desired_yaw = desired_yaw;
-
-
-    usnprintf (string, sizeof(string), "yaw %d [%d]\r\n", temp_yaw, temp_desired_yaw);
-    UARTSend(string);
-    usnprintf (string, sizeof(string), "altitude %d%% [%d%%]\r\n", altitude, desired_altitude);
-    UARTSend(string);
-    usnprintf (string, sizeof(string), "main %d%% tail %d%%\r\n", main_duty, secondary_duty);
-    UARTSend(string);
-    switch(heliState) {
-        case INIT :
-            usnprintf (string, sizeof(string), "mode: init\r\n");
-            break;
-        case STARTUP :
-            usnprintf (string, sizeof(string), "mode: startup\r\n");
-            break;
-        case LANDED :
-            usnprintf (string, sizeof(string), "mode: landed\r\n");
-            break;
-        case LANDING :
-            usnprintf (string, sizeof(string), "mode: landing\r\n");
-            break;
-        case FLYING :
-            usnprintf (string, sizeof(string), "mode: flying\r\n");
-            break;
-    }
-    UARTSend(string);
-}
 
 void update_yaw()
 {
@@ -304,46 +173,27 @@ void update_yaw()
     ref_state = !new_C;
 }
 
-/********************************************************
- * Function to set the freq, duty cycle of M0PWM7
- ********************************************************/
-void
-setDutyCycle (uint32_t ui32Duty, uint8_t rotor)
-{
-    // Calculate the PWM period corresponding to the freq.
-    uint32_t ui32Period =
-        SysCtlClockGet() / PWM_FIXED_RATE_HZ;
-
-    if (rotor == MAIN_ROTOR){
-        PWMPulseWidthSet(PWM_MAIN_BASE, PWM_MAIN_OUTNUM,
-        ui32Period * ui32Duty / 100);
-    }
-    else if (rotor == SECONDARY_ROTOR){
-        PWMPulseWidthSet(PWM_SECONDARY_BASE, PWM_SECONDARY_OUTNUM,
-            ui32Period * ui32Duty / 100);
-    }
-}
 
 void
-checkInput (void)
+checkInputStatus (void)
 {
-    if (checkButton(LEFT) == PUSHED) {
+    if (checkInput(LEFT) == PUSHED) {
         desired_yaw -= 15;
         if (desired_yaw < 0) desired_yaw += 360;
     }
 
-    if (checkButton(RIGHT) == PUSHED) {
+    if (checkInput(RIGHT) == PUSHED) {
         desired_yaw += 15;
         if (desired_yaw > 360) desired_yaw -= 360;
     }
 
-    if (checkButton(UP) == PUSHED) {
+    if (checkInput(UP) == PUSHED) {
         if (desired_altitude != 100) {
             desired_altitude += 10;
         }
     }
 
-    if (checkButton(DOWN) == PUSHED) {
+    if (checkInput(DOWN) == PUSHED) {
         if (desired_altitude != 0) {
             desired_altitude -= 10;
         }
@@ -405,11 +255,10 @@ main(void)
 	
 	initClock ();
 	initADC ();
-	initDisplay ();
+	initialiseDisplay ();
     initInput ();
     initYaw();
     initialisePWM ();
-    initialiseUSB_UART();
 
 
 	// SysCtlDelay (SysCtlClockGet() / 6);  // Update display at ~ 2 Hz - Maybe a delay?
@@ -426,6 +275,7 @@ main(void)
 
 	while (1)
 	{
+
 	    if (g_ulSampCnt % (SAMPLE_RATE_HZ / 40) == 0) {
 	        updateInput ();       // Poll the buttons
 	    }
@@ -437,11 +287,11 @@ main(void)
 
 
 		// Calculate the rounded mean of the buffer contents
-		mean = calculateMeanADC();
+	    uint16_t mean = calculateMeanADC();
 		altitude = 100 * (landed_reference - mean) / 1000;  //100% *(our new height) / 1000mV
 
 
-        if (checkButton(SW) == PUSHED)
+        if (checkInput(SW) == PUSHED)
         {
             switch (heliState) {
             case INIT :     main_duty = 22;
@@ -470,7 +320,7 @@ main(void)
                                 heliState = FLYING;
                             }
                             break;
-            case FLYING :   checkInput();
+            case FLYING :   checkInputStatus();
                             if (g_ulSampCnt % (SAMPLE_RATE_HZ / 20) == 0) {
                                 control();
                             }
@@ -482,10 +332,10 @@ main(void)
         }
 
 		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 2) == 0) {
-		    display();
+		    displayStatusOLED();
 		}
 		if (g_ulSampCnt % (SAMPLE_RATE_HZ / 8) == 0) {
-		    printStatus();          //print all heli info through uart
+		    displayStatusUART();          //print all heli info through uart
 		}
 	}
 }

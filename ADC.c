@@ -97,8 +97,9 @@ uint16_t
 calculateMeanADC(void)
 {
     uint32_t sum = 0;
+    uint16_t i = 0;
 
-    for (uint16_t i = 0; i < BUF_SIZE; i++)
+    for ( i = 0; i < BUF_SIZE; i++)
             sum = sum + readCircBuf (&g_inBuffer);
         // Calculate and display the rounded mean of the buffer contents
     return (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
