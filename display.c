@@ -9,8 +9,8 @@
 #include "display.h"
 #include "uart.h"
 #include "OrbitOLED/OrbitOLEDInterface.h"
+#include "helistates.h"
 
-#include "main.c" // need to know all the current stats of heli, not sure on proper way
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -35,7 +35,7 @@ initialiseDisplay(void)
 
 
 void
-displayStatusOLED(void)
+displayStatusOLED(uint16_t altitude, uint16_t yaw, uint16_t main_duty, uint16_t secondary_duty)
 {
     char string[17];  // 16 characters across the display
 
@@ -62,7 +62,7 @@ displayStatusOLED(void)
 }
 
 void
-displayStatusUART(void)
+displayStatusUART(uint16_t altitude, uint16_t desired_altitude, uint16_t yaw, uint16_t desired_yaw, uint16_t main_duty, uint16_t secondary_duty)
 {
     char string[31];
 
@@ -77,7 +77,7 @@ displayStatusUART(void)
         UARTSend(string);
         usnprintf (string, sizeof(string), "main %d%% tail %d%%\r\n", main_duty, secondary_duty);
         UARTSend(string);
-        switch(heliState) {
+        switch(heli_state) {
             case INIT :
                 usnprintf (string, sizeof(string), "mode: init\r\n");
                 break;

@@ -30,6 +30,8 @@
 #include "input.h"
 #include "height.h"
 #include "yaw.h"
+#include "helistates.h"
+#include "rotors.h"
 
 
 
@@ -50,48 +52,30 @@
 //*****************************************************************************
 // Global variables
 //*****************************************************************************
-static uint16_t landed_reference;   // voltage when helicopter has landed
-static uint16_t altitude;
-static int32_t main_duty = 0;
-static int32_t secondary_duty = 0;
-enum heli_states {INIT = 0, STARTUP, LANDED, LANDING, FLYING};
-
-
-uint8_t heliState = INIT;
-
-static int16_t desired_altitude = 0;
-static float desired_yaw = 0;
-
-static float K_P_Y = 1.5;
-static float K_I_Y = 0.5;
-static float K_D_Y = 0.2;
-
-static float K_P_M = 0.5;
-static float K_I_M = 0.2;
-static float K_D_M = 0.05;
 
 void
 checkInputStatus (void)
 {
     if (checkInput(LEFT) == PUSHED) {
-        desired_yaw -= 15;
-        if (desired_yaw < 0) desired_yaw += 360;
+        if (yaw.desired == 0)
+            yaw.desired += 345;
+        yaw.desired -= 15;
     }
 
     if (checkInput(RIGHT) == PUSHED) {
-        desired_yaw += 15;
-        if (desired_yaw > 360) desired_yaw -= 360;
+        yaw.desired += 15;
+        if (yaw.desired > 360) yaw.desired -= 360;
     }
 
     if (checkInput(UP) == PUSHED) {
-        if (desired_altitude != 100) {
-            desired_altitude += 10;
+        if (alt.desired != 100) {
+            alt.desired += 10;
         }
     }
 
     if (checkInput(DOWN) == PUSHED) {
-        if (desired_altitude != 0) {
-            desired_altitude -= 10;
+        if (alt.desired != 0) {
+            alt.desired -= 10;
         }
     }
 }
@@ -115,7 +99,7 @@ main(void)
 	while (1)
 	{
 
-	    if (SysTickValueGet() % (SysCtlClockGet() / 40) == 0) {
+	    if (SysTickValueGet() % (SysTickPeriodGet() / 40) == 0) {
 	        updateInput ();       // Poll the buttons
 	    }
 
@@ -125,56 +109,54 @@ main(void)
 	    }
 
 
-		// Calculate the rounded mean of the buffer contents
-
-		altitude = calculateMeanHeight();
-
-
         if (checkInput(SW) == PUSHED)
         {
-            switch (heliState) {
+            switch (heli_state) {
             case INIT :     main_duty = 22;
                             secondary_duty = 38;
                             setDutyCycle(secondary_duty, SECONDARY_ROTOR);
                             setDutyCycle(main_duty, MAIN_ROTOR);
-                            heliState = STARTUP;
+                            heli_state = STARTUP;
                             break;
-            case LANDED :   integrated_yaw_error = 0;
-                            integrated_alt_error = 0;
-                            heliState = FLYING;
+            case LANDED :   yaw.error_integrated = 0;
+                            alt.error_integrated = 0;
+                            heli_state = FLYING;
                             break;
-            case FLYING :   desired_altitude = 0;
-                            desired_yaw = 0;
-                            heliState = LANDING;
+            case FLYING :   alt.desired = 0;
+                            yaw.desired = 0;
+                            heli_state = LANDING;
                             break;
             }
         }
 
-        switch (heliState) {
-            case STARTUP : if (ref_state) {
+        switch (heli_state) {
+            case STARTUP : if (atRef()) {
                                 main_duty = 0;
                                 secondary_duty = 0;
                                 setDutyCycle(secondary_duty, SECONDARY_ROTOR);
                                 setDutyCycle(main_duty, MAIN_ROTOR);
-                                heliState = FLYING;
+                                heli_state = FLYING;
                             }
                             break;
             case FLYING :   checkInputStatus();
-                            if (SysTickValueGet() % (SysCtlClockGet() / 20) == 0) {
-                                control();
+                            if (SysTickValueGet() % (SysTickPeriodGet() / 20) == 0) {
+                                doControl(20);
                             }
                             break;
-            case LANDING :  if (SysTickValueGet() % (SysCtlClockGet() / 20) == 0) {
-                                control();
+            case LANDING :  if (SysTickValueGet() % (SysTickPeriodGet() / 20) == 0) {
+                                doControl(20);
                             }
                             break;
         }
 
-		if (SysTickValueGet() % (SysCtlClockGet() / 2) == 0) {
-		    displayStatusOLED();
+        uint32_t systick = SysTickValueGet();
+        uint32_t period = SysTickPeriodGet();
+
+		if (systick % (period / 2) == 0) {
+		    displayStatusOLED(alt.actual, yaw.actual, main_duty, secondary_duty);
 		}
-		if (SysTickValueGet() % (SysCtlClockGet() / 8) == 0) {
-		    displayStatusUART();          //print all heli info through uart
+		if (SysTickValueGet() % (SysTickPeriodGet() / 8) == 0) {
+		    displayStatusUART(alt.actual, alt.desired, yaw.actual, yaw.desired, main_duty, secondary_duty);          //print all heli info through uart
 		}
 	}
 }

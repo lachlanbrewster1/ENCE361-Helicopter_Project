@@ -10,11 +10,15 @@
 #ifndef DISPLAY_H_
 #define DISPLAY_H_
 
+#include <stdint.h>
+
 void initialiseDisplay(void);
 
-void displayStatusOLED(void);
+void
+displayStatusOLED(uint16_t altitude, uint16_t yaw, uint16_t main_duty, uint16_t secondary_duty);
 
-void displayStatusUART(void);
+void
+displayStatusUART(uint16_t altitude, uint16_t desired_altitude, uint16_t yaw, uint16_t desired_yaw, uint16_t main_duty, uint16_t secondary_duty);
 
 
 

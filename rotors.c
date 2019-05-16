@@ -21,24 +21,22 @@
 #include "height.h"
 #include "yaw.h"
 #include "rotors.h"
-#include "control.h"
-
-
-
-
+#include "helistates.h"
 
 
 void
-doControl(uint16_t desired_height, uint16_t desired_yaw, uint16_t frequency)
+doControl(uint16_t frequency)
 {
-    int16_t new_desired_yaw = desired_yaw;
-    if (desired_yaw - getYaw() > 180)
-        new_desired_yaw -= 360;
-    else if (desired_yaw - getYaw() < -180)
-        new_desired_yaw += 360;
+    yaw.actual = getYaw();
+    if (yaw.desired - yaw.actual > 180)
+        yaw.desired -= 360;
+    if (yaw.desired - yaw.actual < -180)
+        yaw.desired += 360;
 
-    uint16_t main_duty = PID(desired_height, calculateMeanHeight(), KP_M, KI_M, KD_M, frequency) / SCALE;
-    uint16_t secondary_duty = PID(new_desired_yaw, getYaw(), KP_Y, KI_Y, KD_Y, frequency) / SCALE;
+    alt.actual = calculateMeanHeight();
+
+    main_duty = PID(alt, frequency) / SCALE;
+    secondary_duty = PID(yaw, frequency) / SCALE;
 
     if (main_duty > 80) main_duty = 80;
     if (main_duty < 20) main_duty = 20;
@@ -46,10 +44,10 @@ doControl(uint16_t desired_height, uint16_t desired_yaw, uint16_t frequency)
     if (secondary_duty > 80) secondary_duty = 80;
     if (secondary_duty < 20) secondary_duty = 20;
 
-    if (heliState ==  LANDING && altitude < 5) {
+    if (heli_state ==  LANDING && alt.actual < 5) {
         secondary_duty = 0;
         main_duty = 0;
-        heliState = LANDED;
+        heli_state = LANDED;
     }
 
     setDutyCycle(main_duty, MAIN_ROTOR);

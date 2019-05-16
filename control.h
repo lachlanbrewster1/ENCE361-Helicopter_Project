@@ -10,19 +10,27 @@
 
 #include <stdint.h>
 
+typedef struct controller {
+    uint16_t desired;
+    uint16_t actual;
+    uint8_t Kp;
+    uint8_t Ki;
+    uint8_t Kd;
+    int16_t error_integrated;
+    int16_t error_previous;
+} controller;
+
 
 int32_t
-proportional (int32_t desired, int32_t actual, uint16_t Kp);
+proportional (controller controlled);
 
 int32_t
-integral (int32_t desired, int32_t actual, uint16_t Ki, uint16_t frequency);
+integral (controller controlled, uint16_t frequency);
 
 int32_t
-derivative (int32_t desired, int32_t actual, uint16_t Kd, uint16_t frequency);
+derivative (controller controlled, uint16_t frequency);
 
 int32_t
-PID (int32_t desired, int32_t actual, uint16_t Kp, uint16_t Ki, uint16_t Kd, uint16_t frequency);
-
-
+PID (controller controlled, uint16_t frequency);
 
 #endif /* CONTROL_H_ */
