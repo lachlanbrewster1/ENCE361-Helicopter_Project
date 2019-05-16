@@ -46,7 +46,7 @@ enum butStates {RELEASED = 0, PUSHED, NO_CHANGE};
 #define SW_PERIPH  SYSCTL_PERIPH_GPIOA
 #define SW_PORT_BASE  GPIO_PORTA_BASE
 #define SW_PIN  GPIO_PIN_7
-#define SW_NORMAL  true
+#define SW_NORMAL  false
 
 
 #define NUM_BUT_POLLS 3

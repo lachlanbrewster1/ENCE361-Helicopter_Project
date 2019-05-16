@@ -24,6 +24,6 @@ bool
 atRef();
 
 
-static volatile bool yaw_flag = false;
+extern volatile bool yaw_flag;
 
 #endif /* YAW_H_ */

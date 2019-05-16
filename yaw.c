@@ -26,6 +26,7 @@ static bool yaw_A_state = false;
 static bool yaw_B_state = false;
 static bool ref_state = false;
 static int16_t yaw = 0;         //helicopter yaw scaled by 10x
+volatile bool yaw_flag = false;
 
 
 void

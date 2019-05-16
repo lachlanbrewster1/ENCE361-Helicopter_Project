@@ -129,15 +129,21 @@ main(void)
         }
 
         switch (heli_state) {
-            case STARTUP :  yaw.desired = yaw.actual + 2;
-                            if (yaw.desired > 360)
-                                yaw.desired -= 360;
-                            if (atRef()) {
-                                main_duty = 0;
-                                secondary_duty = 0;
-                                setDutyCycle(secondary_duty, SECONDARY_ROTOR);
-                                setDutyCycle(main_duty, MAIN_ROTOR);
+            case STARTUP :  if (atRef()) {
+                                alt.desired = 0;
+                                yaw.desired = 0;
+                                yaw.error_integrated = 0;
+                                yaw.error_previous = 0;
+                                alt.error_integrated = 0;
+                                alt.error_previous = 0;
                                 heli_state = FLYING;
+                            }
+                            else if (getFlag20Hz()) {
+                                yaw.desired = yaw.actual + 8;
+                                if (yaw.desired > 360)
+                                    yaw.desired -= 360;
+                                setFlag20Hz(false);
+                                doControl(20); //do control at 20Hz
                             }
                             break;
             case FLYING :   checkInputStatus();
@@ -152,9 +158,6 @@ main(void)
                             }
                             break;
         }
-
-        uint32_t systick = SysTickValueGet();
-        uint32_t period = SysTickPeriodGet();
 
 		if (getFlag2Hz()) {
 		    setFlag2Hz(false);

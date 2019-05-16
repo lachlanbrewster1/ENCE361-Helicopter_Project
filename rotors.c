@@ -42,8 +42,8 @@ doControl(uint16_t frequency)
 
     alt.actual = calculateMeanHeight();
 
-    main_duty = PID(alt, frequency) / SCALE;
-    secondary_duty = PID(yaw, frequency) / SCALE;
+    main_duty = PID(&alt, frequency) / SCALE;
+    secondary_duty = PID(&yaw, frequency) / SCALE;
 
     if (main_duty > 80) main_duty = 80;
     if (main_duty < 20) main_duty = 20;

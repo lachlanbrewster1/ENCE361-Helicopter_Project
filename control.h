@@ -22,15 +22,15 @@ typedef struct controller {
 
 
 int32_t
-proportional (controller controlled);
+proportional (controller *controlled);
 
 int32_t
-integral (controller controlled, uint16_t frequency);
+integral (controller *controlled, uint16_t frequency);
 
 int32_t
-derivative (controller controlled, uint16_t frequency);
+derivative (controller *controlled, uint16_t frequency);
 
 int32_t
-PID (controller controlled, uint16_t frequency);
+PID (controller *controlled, uint16_t frequency);
 
 #endif /* CONTROL_H_ */
