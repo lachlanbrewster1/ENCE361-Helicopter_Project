@@ -10,12 +10,12 @@
 #ifndef ROTORS_H_
 #define ROTORS_H_
 
-#define KP_Y   150
-#define KI_Y   100
-#define KD_Y   20
+#define KP_Y   220
+#define KI_Y   180
+#define KD_Y   80
 
-#define KP_M   50
-#define KI_M   20
+#define KP_M   80
+#define KI_M   60
 #define KD_M   5
 
 #define SCALE   100
@@ -26,8 +26,8 @@
 extern controller alt;
 extern controller yaw;
 
-extern uint16_t main_duty;
-extern uint16_t secondary_duty;
+extern int32_t main_duty;
+extern int32_t secondary_duty;
 
 
 void

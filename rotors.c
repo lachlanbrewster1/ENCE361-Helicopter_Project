@@ -27,8 +27,8 @@
 controller alt = {0,0,KP_M,KI_M,KD_M,0,0};
 controller yaw = {0,0,KP_Y,KI_Y,KD_Y,0,0};
 
-uint16_t main_duty = 0;
-uint16_t secondary_duty = 0;
+int32_t main_duty = 0;
+int32_t secondary_duty = 0;
 
 
 void
@@ -46,10 +46,10 @@ doControl(uint16_t frequency)
     secondary_duty = PID(&yaw, frequency) / SCALE;
 
     if (main_duty > 80) main_duty = 80;
-    if (main_duty < 20) main_duty = 20;
+    if (main_duty < 30) main_duty = 30;
 
     if (secondary_duty > 80) secondary_duty = 80;
-    if (secondary_duty < 20) secondary_duty = 20;
+    if (secondary_duty < 0) secondary_duty = 0;
 
     if (heli_state ==  LANDING && alt.actual < 5) {
         secondary_duty = 0;

@@ -133,17 +133,17 @@ main(void)
                                 alt.desired = 0;
                                 yaw.desired = 0;
                                 yaw.error_integrated = 0;
-                                yaw.error_previous = 0;
-                                alt.error_integrated = 0;
-                                alt.error_previous = 0;
                                 heli_state = FLYING;
                             }
                             else if (getFlag20Hz()) {
-                                yaw.desired = yaw.actual + 8;
-                                if (yaw.desired > 360)
-                                    yaw.desired -= 360;
                                 setFlag20Hz(false);
-                                doControl(20); //do control at 20Hz
+                                if ((yaw.actual < yaw.desired + 3) && (yaw.actual > yaw.desired - 3)) {
+                                    yaw.desired += 15;
+                                    if (yaw.desired > 360)
+                                        yaw.desired -= 360;
+                                    yaw.error_integrated = 0;
+                                }
+                                doControl(20);
                             }
                             break;
             case FLYING :   checkInputStatus();

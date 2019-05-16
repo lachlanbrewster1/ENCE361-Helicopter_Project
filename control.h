@@ -11,13 +11,13 @@
 #include <stdint.h>
 
 typedef struct controller {
-    uint16_t desired;
-    uint16_t actual;
-    uint8_t Kp;
-    uint8_t Ki;
-    uint8_t Kd;
-    int16_t error_integrated;
-    int16_t error_previous;
+    int32_t desired;
+    int32_t actual;
+    uint16_t Kp;
+    uint16_t Ki;
+    uint16_t Kd;
+    int32_t error_integrated;
+    int32_t error_previous;
 } controller;
 
 
