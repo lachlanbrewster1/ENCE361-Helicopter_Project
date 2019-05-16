@@ -52,6 +52,8 @@
 //*****************************************************************************
 // Global variables
 //*****************************************************************************
+uint8_t heli_state = INIT;
+
 
 void
 checkInputStatus (void)
@@ -99,7 +101,8 @@ main(void)
 	while (1)
 	{
 
-	    if (SysTickValueGet() % (SysTickPeriodGet() / 40) == 0) {
+	    if (getFlag40Hz()) {
+	        setFlag40Hz(false);
 	        updateInput ();       // Poll the buttons
 	    }
 
@@ -112,11 +115,7 @@ main(void)
         if (checkInput(SW) == PUSHED)
         {
             switch (heli_state) {
-            case INIT :     main_duty = 22;
-                            secondary_duty = 38;
-                            setDutyCycle(secondary_duty, SECONDARY_ROTOR);
-                            setDutyCycle(main_duty, MAIN_ROTOR);
-                            heli_state = STARTUP;
+            case INIT :     heli_state = STARTUP;
                             break;
             case LANDED :   yaw.error_integrated = 0;
                             alt.error_integrated = 0;
@@ -130,7 +129,10 @@ main(void)
         }
 
         switch (heli_state) {
-            case STARTUP : if (atRef()) {
+            case STARTUP :  yaw.desired = yaw.actual + 2;
+                            if (yaw.desired > 360)
+                                yaw.desired -= 360;
+                            if (atRef()) {
                                 main_duty = 0;
                                 secondary_duty = 0;
                                 setDutyCycle(secondary_duty, SECONDARY_ROTOR);
@@ -139,12 +141,14 @@ main(void)
                             }
                             break;
             case FLYING :   checkInputStatus();
-                            if (SysTickValueGet() % (SysTickPeriodGet() / 20) == 0) {
-                                doControl(20);
+                            if (getFlag20Hz()) {
+                                setFlag20Hz(false);
+                                doControl(20); //do control at 20Hz
                             }
                             break;
-            case LANDING :  if (SysTickValueGet() % (SysTickPeriodGet() / 20) == 0) {
-                                doControl(20);
+            case LANDING :  if (getFlag20Hz()) {
+                                setFlag20Hz(false);
+                                doControl(20);  //do control at 20Hz
                             }
                             break;
         }
@@ -152,10 +156,12 @@ main(void)
         uint32_t systick = SysTickValueGet();
         uint32_t period = SysTickPeriodGet();
 
-		if (systick % (period / 2) == 0) {
+		if (getFlag2Hz()) {
+		    setFlag2Hz(false);
 		    displayStatusOLED(alt.actual, yaw.actual, main_duty, secondary_duty);
 		}
-		if (SysTickValueGet() % (SysTickPeriodGet() / 8) == 0) {
+        if (getFlag8Hz()) {
+            setFlag8Hz(false);
 		    displayStatusUART(alt.actual, alt.desired, yaw.actual, yaw.desired, main_duty, secondary_duty);          //print all heli info through uart
 		}
 	}

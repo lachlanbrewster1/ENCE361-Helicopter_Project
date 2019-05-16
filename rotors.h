@@ -11,7 +11,7 @@
 #define ROTORS_H_
 
 #define KP_Y   150
-#define KI_Y   50
+#define KI_Y   100
 #define KD_Y   20
 
 #define KP_M   50
@@ -23,11 +23,11 @@
 
 
 
-static controller alt = {0,0,KP_M,KI_M,KD_M,0,0};
-static controller yaw = {0,0,KP_Y,KI_Y,KD_Y,0,0};
+extern controller alt;
+extern controller yaw;
 
-static uint16_t main_duty = 0;
-static uint16_t secondary_duty = 0;
+extern uint16_t main_duty;
+extern uint16_t secondary_duty;
 
 
 void

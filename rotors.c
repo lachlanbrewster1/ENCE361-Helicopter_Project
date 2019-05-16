@@ -24,6 +24,13 @@
 #include "helistates.h"
 
 
+controller alt = {0,0,KP_M,KI_M,KD_M,0,0};
+controller yaw = {0,0,KP_Y,KI_Y,KD_Y,0,0};
+
+uint16_t main_duty = 0;
+uint16_t secondary_duty = 0;
+
+
 void
 doControl(uint16_t frequency)
 {

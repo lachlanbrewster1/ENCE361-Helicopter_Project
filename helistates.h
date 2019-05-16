@@ -12,6 +12,6 @@
 enum heli_states {INIT = 0, STARTUP, LANDED, LANDING, FLYING};
 
 
-static uint8_t heli_state = INIT;
+extern uint8_t heli_state;
 
 #endif /* HELISTATES_H_ */
