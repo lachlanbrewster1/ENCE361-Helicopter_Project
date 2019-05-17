@@ -61,7 +61,7 @@ checkInputStatus (void)
     if (checkInput(LEFT) == PUSHED) {
         if (yaw.desired == 0)
             yaw.desired += 345;
-        yaw.desired -= 15;
+        else yaw.desired -= 15;
     }
 
     if (checkInput(RIGHT) == PUSHED) {
@@ -121,7 +121,7 @@ main(void)
                             alt.error_integrated = 0;
                             heli_state = FLYING;
                             break;
-            case FLYING :   alt.desired = 0;
+            case FLYING :   alt.desired = alt.actual - 10;
                             yaw.desired = 0;
                             heli_state = LANDING;
                             break;
@@ -137,7 +137,7 @@ main(void)
                             }
                             else if (getFlag20Hz()) {
                                 setFlag20Hz(false);
-                                if ((yaw.actual < yaw.desired + 3) && (yaw.actual > yaw.desired - 3)) {
+                                if ((yaw.actual < yaw.desired + 6) && (yaw.actual > yaw.desired - 6)) {
                                     yaw.desired += 15;
                                     if (yaw.desired > 360)
                                         yaw.desired -= 360;
@@ -152,8 +152,17 @@ main(void)
                                 doControl(20); //do control at 20Hz
                             }
                             break;
-            case LANDING :  if (getFlag20Hz()) {
+            case LANDING :  if ((alt.actual < 8) && (yaw.actual < 5 || yaw.actual > 355)) {   //height less than 8% and yaw within 5 degrees of ref
+                                alt.error_integrated = 0;
+                                yaw.error_integrated = 0;
+                                alt.desired = 0;
+                                heli_state = LANDED;
+                            }
+                            else if (getFlag20Hz()) {
                                 setFlag20Hz(false);
+                                if (yaw.actual > 355 || yaw.actual < 5) {
+                                    alt.desired = 0;
+                                }
                                 doControl(20);  //do control at 20Hz
                             }
                             break;

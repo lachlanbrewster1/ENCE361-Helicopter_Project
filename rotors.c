@@ -46,7 +46,7 @@ doControl(uint16_t frequency)
     secondary_duty = PID(&yaw, frequency) / SCALE;
 
     if (main_duty > 80) main_duty = 80;
-    if (main_duty < 30) main_duty = 30;
+    if (main_duty < 20) main_duty = 20;
 
     if (secondary_duty > 80) secondary_duty = 80;
     if (secondary_duty < 0) secondary_duty = 0;

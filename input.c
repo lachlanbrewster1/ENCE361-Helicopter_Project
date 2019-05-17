@@ -34,6 +34,15 @@ static uint8_t but_count[NUM_BUTS];
 static bool but_flag[NUM_BUTS];
 static bool but_normal[NUM_BUTS];   // Corresponds to the electrical state
 
+
+void
+ResetIntHandler(void)
+{
+    SysCtlReset();
+    GPIOIntClear(GPIO_PORTA_BASE, GPIO_PIN_7);
+}
+
+
 // *******************************************************
 // initButtons: Initialise the variables associated with the set of buttons
 // defined by the constants in the buttons2.h header file.
@@ -41,6 +50,21 @@ void
 initInput (void)
 {
 	int i;
+
+	// RESET button (active LOW)
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA))
+    {
+    }
+
+    GPIOIntRegister(GPIO_PORTA_BASE, ResetIntHandler);
+
+    GPIOPinTypeGPIOInput(GPIO_PORTA_BASE, GPIO_PIN_6 );
+
+    GPIODirModeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_DIR_MODE_IN);
+    GPIOIntTypeSet(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_FALLING_EDGE);
+    GPIOIntEnable(GPIO_PORTA_BASE, GPIO_PIN_6);
+
 
 	// UP button (active HIGH)
     SysCtlPeripheralEnable (UP_BUT_PERIPH);

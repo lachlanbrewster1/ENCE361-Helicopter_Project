@@ -10,13 +10,13 @@
 #ifndef ROTORS_H_
 #define ROTORS_H_
 
-#define KP_Y   220
-#define KI_Y   180
-#define KD_Y   80
+#define KP_Y   350
+#define KI_Y   280
+#define KD_Y   50
 
-#define KP_M   80
-#define KI_M   60
-#define KD_M   5
+#define KP_M   160
+#define KI_M   140
+#define KD_M   50
 
 #define SCALE   100
 
