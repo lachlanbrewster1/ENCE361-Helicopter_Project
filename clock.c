@@ -25,14 +25,15 @@ void
 SysTickIntHandler(void)
 {
     counter++;
-    if (counter % (SAMPLE_RATE_HZ / 40) == 0)
-        flag_40_hz = true;
-    if (counter % (SAMPLE_RATE_HZ / 20) == 0)
-        flag_20_hz = true;
-    if (counter % (SAMPLE_RATE_HZ / 8) == 0)
-        flag_8_hz = true;
     if (counter % (SAMPLE_RATE_HZ / 2) == 0){
         flag_2_hz = true;
+        if (counter % (SAMPLE_RATE_HZ / 8) == 0)
+            flag_8_hz = true;
+        if (counter % (SAMPLE_RATE_HZ / 20) == 0) {
+            flag_20_hz = true;
+            if (counter % (SAMPLE_RATE_HZ / 40) == 0)
+                flag_40_hz = true;
+        }
         counter = 0;
     }
 
