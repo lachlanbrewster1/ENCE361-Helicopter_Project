@@ -19,7 +19,7 @@ volatile bool flag_8_hz;
 volatile bool flag_2_hz;
 
 //*****************************************************************************
-// The interrupt handler for the for SysTick interrupt. Calls interrupt handler for ADC conversion
+// The interrupt handler for the for SysTick interrupt.
 //*****************************************************************************
 void
 SysTickIntHandler(void)
@@ -87,7 +87,7 @@ void setFlag2Hz(bool flag)
 
 
 //*****************************************************************************
-// Initialisation functions for the clock (incl. SysTick), ADC
+// Initialisation functions for the clock
 //*****************************************************************************
 void
 initClock (void)

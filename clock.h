@@ -29,13 +29,13 @@ void setFlag2Hz(bool flag);
 
 //*****************************************************************************
 //
-// The interrupt handler for the for SysTick interrupt. Calls interrupt handler for ADC conversion
+// The interrupt handler for the for SysTick interrupt.
 //
 //*****************************************************************************
 void SysTickIntHandler(void);
 
 //*****************************************************************************
-// Initialisation functions for the clock (incl. SysTick), ADC
+// Initialisation functions for the clock
 //*****************************************************************************
 void initClock (void);
 

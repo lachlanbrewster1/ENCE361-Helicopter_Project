@@ -1,12 +1,6 @@
 //*****************************************************************************
+// Main file for the program to run from
 //
-// ADCdemo1.c - Simple interrupt driven program which samples with AIN0
-//
-// Author:  P.J. Bones	UCECE
-// Last modified:	8.2.2018
-//
-//*****************************************************************************
-// Based on the 'convert' series from 2016
 //*****************************************************************************
 
 #include <stdint.h>
@@ -36,17 +30,16 @@
 
 
 
-
 //*****************************************************************************
 // Definitions
 //*****************************************************************************
 
 
-
-
 //*****************************************************************************
 // Constants
 //*****************************************************************************
+
+
 
 
 //*****************************************************************************
@@ -92,18 +85,18 @@ main(void)
     initInput ();
     initYaw();
     initialisePWM ();
-    setLandedRef(); // maybe need to wait for buffer to fill?
+    setLandedRef();
 
-    //
     // Enable interrupts to the processor.
 	IntMasterEnable();
 
+	// Main program loop
 	while (1)
 	{
-
+	    // Poll the buttons at 40hz
 	    if (getFlag40Hz()) {
 	        setFlag40Hz(false);
-	        updateInput ();       // Poll the buttons
+	        updateInput ();
 	    }
 
 	    if (yaw_flag){
@@ -111,7 +104,7 @@ main(void)
 	        update_yaw();
 	    }
 
-
+	    // Change the helicopter state when the switch is used
         if (checkInput(SW) == PUSHED)
         {
             switch (heli_state) {
@@ -128,6 +121,7 @@ main(void)
             }
         }
 
+        // Depending which state the helicopter is in, do something
         switch (heli_state) {
             case STARTUP :  if (atRef()) {
                                 alt.desired = 0;
@@ -143,13 +137,13 @@ main(void)
                                         yaw.desired -= 360;
                                     yaw.error_integrated = 0;
                                 }
-                                doControl(20);
+                                doControl(20); //do control at 20Hz
                             }
                             break;
             case FLYING :   checkInputStatus();
                             if (getFlag20Hz()) {
                                 setFlag20Hz(false);
-                                doControl(20); //do control at 20Hz
+                                doControl(20);
                             }
                             break;
             case LANDING :  if ((alt.actual < 8) && (yaw.actual < 5 || yaw.actual > 355)) {   //height less than 8% and yaw within 5 degrees of ref
@@ -168,13 +162,16 @@ main(void)
                             break;
         }
 
+        // Display the helicopters status on the OLED screen at 2hz
 		if (getFlag2Hz()) {
 		    setFlag2Hz(false);
 		    displayStatusOLED(alt.actual, yaw.actual, main_duty, secondary_duty);
 		}
+
+        // Display the helicopters status through serial communication at 8hz
         if (getFlag8Hz()) {
             setFlag8Hz(false);
-		    displayStatusUART(alt.actual, alt.desired, yaw.actual, yaw.desired, main_duty, secondary_duty);          //print all heli info through uart
+		    displayStatusUART(alt.actual, alt.desired, yaw.actual, yaw.desired, main_duty, secondary_duty);
 		}
 	}
 }

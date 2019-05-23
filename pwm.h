@@ -3,6 +3,9 @@
  *
  *  Created on: 13/05/2019
  *      Author: lbr63
+ *
+ *  Uses a modified version of pwnGen.h, by P.J. Bones UCECE
+ *
  */
 
 #ifndef PWM_H_
@@ -31,8 +34,7 @@
 #define PWM_FIXED_RATE_HZ     200
 #define PWM_DIVIDER_CODE   SYSCTL_PWMDIV_4
 
-//  PWM Hardware Details M0PWM7 (gen 3)
-//  ---Main Rotor PWM: PC5, J4-05
+//  PWM Hardware Details
 #define PWM_MAIN_BASE        PWM0_BASE
 #define PWM_MAIN_GEN         PWM_GEN_3
 #define PWM_MAIN_OUTNUM      PWM_OUT_7
@@ -56,10 +58,16 @@
 #define MAIN_ROTOR 1
 #define SECONDARY_ROTOR 2
 
-
+//*****************************************************************************
+// Initialisation functions for the PWM. Initialises module 0 and module 1.
+// Using the constants defined in pwm.h
+//*****************************************************************************
 void
 initialisePWM (void);
 
+//*****************************************************************
+//  Function to set the duty cycle of the main, or secondary rotor
+// ****************************************************************
 void
 setDutyCycle (uint32_t ui32Duty, uint8_t rotor);
 

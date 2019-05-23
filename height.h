@@ -11,9 +11,8 @@
 #define BUF_SIZE 100
 
 //*****************************************************************************
-//
-// The interrupt handler for the for ADC conversion interrupt.
-//
+// The handler for the ADC conversion complete interrupt.
+// Writes to the circular buffer.
 //*****************************************************************************
 void ADCIntHandler(void);
 
@@ -22,9 +21,16 @@ void ADCIntHandler(void);
 //*****************************************************************************
 void initADC (void);
 
+//*****************************************************************************
+// Calculate and return the rounded mean of the buffer contents
+//*****************************************************************************
 uint16_t
 calculateMeanHeight(void);
 
+//*****************************************************************************
+// Set the landed reference of the helicopter.
+// Uses the rounded mean of the circular buffer contents
+//*****************************************************************************
 void
 setLandedRef(void);
 

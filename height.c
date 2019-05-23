@@ -22,16 +22,13 @@
 #include "height.h"
 
 
-static circBuf_t g_inBuffer;     // Buffer of size BUF_SIZE integers (sample values)
-static uint16_t landed_ref;
-
+static circBuf_t g_inBuffer;     // Buffer of size BUF_SIZE
+static uint16_t landed_ref;      // Landed reference of the helicopter
 
 
 //*****************************************************************************
-//
 // The handler for the ADC conversion complete interrupt.
 // Writes to the circular buffer.
-//
 //*****************************************************************************
 void
 ADCIntHandler(void)
@@ -93,7 +90,9 @@ initADC (void)
     ADCIntEnable(ADC0_BASE, 3);
 }
 
-// Calculate the rounded mean of the buffer contents
+//*****************************************************************************
+// Calculate and return the rounded mean of the buffer contents
+//*****************************************************************************
 uint16_t
 calculateMeanHeight(void)
 {
@@ -107,7 +106,10 @@ calculateMeanHeight(void)
     return (2 * (100 * (landed_ref - mean)) + 1000) / 2 / 1000; //100% *(our new height) / 1000mV
 }
 
-
+//*****************************************************************************
+// Set the landed reference of the helicopter.
+// Uses the rounded mean of the circular buffer contents
+//*****************************************************************************
 void
 setLandedRef(void)
 {
@@ -115,6 +117,6 @@ setLandedRef(void)
     uint32_t sum = 0;
     for (i = 0; i < BUF_SIZE; i++)
             sum = sum + readCircBuf (&g_inBuffer);
-        // Calculate and display the rounded mean of the buffer contents
+        // Calculate the rounded mean of the buffer contents
     landed_ref = (2 * sum + BUF_SIZE) / 2 / BUF_SIZE;
 }

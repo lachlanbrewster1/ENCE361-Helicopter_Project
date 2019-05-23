@@ -1,6 +1,8 @@
 /*
  * control.h
  *
+ * Handles the PID control for the program
+ *
  *  Created on: 14/05/2019
  *      Author: bsl28
  */
@@ -20,16 +22,27 @@ typedef struct controller {
     int32_t error_previous;
 } controller;
 
-
+//*****************************************************************************
+// Handles Proportional control
+//*****************************************************************************
 int32_t
 proportional (controller *controlled);
 
+//*****************************************************************************
+// Handles Integral control
+//*****************************************************************************
 int32_t
 integral (controller *controlled, uint16_t frequency);
 
+//*****************************************************************************
+// Handles Derivative control
+//*****************************************************************************
 int32_t
 derivative (controller *controlled, uint16_t frequency);
 
+//*****************************************************************************
+// Main PID function, returns the PID value after using proportional, integral and derivative control
+//*****************************************************************************
 int32_t
 PID (controller *controlled, uint16_t frequency);
 

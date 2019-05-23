@@ -3,9 +3,10 @@
  *
  *  Created on: 13/05/2019
  *      Author: lbr63
+ *
+ *  Uses a modified version of pwnGen.c, by P.J. Bones UCECE
+ *
  */
-
-
 #include <stdint.h>
 #include <stdbool.h>
 #include "inc/hw_memmap.h"
@@ -22,7 +23,10 @@
 #include "pwm.h"
 
 
-
+//*****************************************************************************
+// Initialisation functions for the PWM. Initialises module 0 and module 1.
+// Using the constants defined in pwm.h
+//*****************************************************************************
 void
 initialisePWM (void)
 {
@@ -62,9 +66,9 @@ initialisePWM (void)
 }
 
 
-/********************************************************
- * Function to set the freq, duty cycle of M0PWM7
- ********************************************************/
+//*****************************************************************
+//  Function to set the duty cycle of the main, or secondary rotor
+// ****************************************************************
 void
 setDutyCycle (uint32_t ui32Duty, uint8_t rotor)
 {
