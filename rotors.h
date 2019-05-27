@@ -22,15 +22,15 @@
 #define SCALE   100
 
 
-
-
 extern controller alt;
 extern controller yaw;
 
 extern int32_t main_duty;
 extern int32_t secondary_duty;
 
-
+//*****************************************************************************
+// Handles control of main and secondary rotors. Calls the PID functions in Control.c
+//*****************************************************************************
 void
 doControl(uint16_t frequency);
 

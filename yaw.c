@@ -28,7 +28,9 @@ static bool ref_state = false;
 static int16_t yaw = 0;         //helicopter yaw scaled by 10x
 volatile bool yaw_flag = false;
 
-
+//*****************************************************************************
+// Handler for yaw interupt, sets the yaw flag
+//*****************************************************************************
 void
 yawIntHandler(void)
 {
@@ -36,6 +38,9 @@ yawIntHandler(void)
     GPIOIntClear(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 }
 
+//********************************************************
+// initialise yaw functions, using constants defined in yaw.h.
+//********************************************************
 void
 initYaw(void)
 {
@@ -61,6 +66,10 @@ initYaw(void)
     GPIODirModeSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_DIR_MODE_IN);
 }
 
+//********************************************************
+// Update the current yaw values,
+// also adjusts them appropriately within our tolerances
+//********************************************************
 void
 update_yaw()
 {
@@ -117,13 +126,18 @@ update_yaw()
     ref_state = !new_C;
 }
 
-//returns yaw correctly scaled to -180 - 180 degrees
+//********************************************************
+// returns the current yaw
+// which is  correctly scaled between -180 to 180 degrees
+//********************************************************
 uint16_t getYaw()
 {
     return (2 * yaw + 10) / 2 / 10;
 }
 
-
+//********************************************************
+// returns the a boolean of if the helicopter is at its reference yaw point
+//********************************************************
 bool atRef()
 {
     return ref_state;

@@ -30,7 +30,9 @@ controller yaw = {0,0,KP_Y,KI_Y,KD_Y,0,0};
 int32_t main_duty = 0;
 int32_t secondary_duty = 0;
 
-
+//*****************************************************************************
+// Handles control of main and secondary rotors. Calls the PID functions in Control.c
+//*****************************************************************************
 void
 doControl(uint16_t frequency)
 {

@@ -1,18 +1,16 @@
 //********************************************************
 //
-// uartDemo.c - Example code for ENCE361
+// uart.c
 //
-// Link with modules:  buttons2, OrbitOLEDInterface
 //
-// Author:  P.J. Bones	UCECE
-// Last modified:	16.4.2018
+//  Uses a modified version of uartDemo.c, by P.J. Bones UCECE
 //
-
+//*******************************************************
 #include "uart.h"
 
 
 //********************************************************
-// initialiseUSB_UART - 8 bits, 1 stop bit, no parity
+// initialise UART functions, using constants defined in uart.h
 //********************************************************
 void
 initialiseUSB_UART (void)
@@ -38,16 +36,11 @@ initialiseUSB_UART (void)
 
 
 //**********************************************************************
-// Transmit a string via UART0
+// Transmit a given string via UART
 //**********************************************************************
 void
 UARTSend (char *pucBuffer)
 {
-    // eg.
-    //usprintf (statusStr, "UP=%2d DN=%2d | \r\n", upPushes, downPushes); // * usprintf
-    //UARTSend (statusStr);
-
-
 
     // Loop while there are more characters to send.
     while(*pucBuffer)

@@ -1,9 +1,11 @@
-/*
- * uart.h
- *
- *  Created on: 25/04/2019
- *      Author: bsl28
- */
+//********************************************************
+//
+// uart.h
+//
+//
+//  Uses a modified version of uartDemo.h, by P.J. Bones UCECE
+//
+//*******************************************************
 
 #ifndef UART_H_
 #define UART_H_
@@ -38,10 +40,15 @@
 #define UART_USB_GPIO_PIN_TX    GPIO_PIN_1
 #define UART_USB_GPIO_PINS      UART_USB_GPIO_PIN_RX | UART_USB_GPIO_PIN_TX
 
+
 //********************************************************
-// Prototypes
+// initialise UART functions, using constants defined in uart.h
 //********************************************************
 void initialiseUSB_UART (void);
+
+//**********************************************************************
+// Transmit a given string via UART
+//**********************************************************************
 void UARTSend (char *pucBuffer);
 
 
